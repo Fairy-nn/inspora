@@ -5,6 +5,7 @@ import (
 	"github.com/Fairy-nn/inspora/internal/repository/dao"
 	"github.com/Fairy-nn/inspora/internal/service"
 	"github.com/Fairy-nn/inspora/internal/web"
+	"github.com/Fairy-nn/inspora/internal/web/middleware"
 	"github.com/gin-contrib/sessions"
 	"github.com/gin-contrib/sessions/cookie"
 	"github.com/gin-gonic/gin"
@@ -45,24 +46,16 @@ func initDB() *gorm.DB {
 }
 
 func setcookie(r *gin.Engine) *gin.Engine {
-	store := cookie.NewStore([]byte("secret")) // 创建一个新的 Cookie 存储
-	r.Use(sessions.Sessions("mysession", store))
-	
-	// 使用中间件来处理会话,登录校验
-	r.Use(func(c *gin.Context) {
-		if c.Request.URL.Path == "/user/login" || c.Request.URL.Path == "/user/signup" {
-			c.Next() // 如果是登录或注册请求，跳过中间件
-			return
-		}
-
-		session := sessions.Default(c) // 获取当前会话
-		id := session.Get("userID")    // 获取会话中的用户ID
-		if id == nil {
-			c.AbortWithStatus(401) // 如果 ID 为空，返回 401 错误
-			return
-		}
-
-		c.Set("session", session) // 将会话存储在上下文中
+	// 从环境变量加载密钥
+	secret := []byte("my-secure-secret-key") // 替换为更复杂的密钥
+	store := cookie.NewStore(secret)
+	store.Options(sessions.Options{
+		Path:     "/",
+		MaxAge:   3600, // 设置会话过期时间（秒）
+		Secure:   true, // 仅在 HTTPS 下传输
+		HttpOnly: true, // 禁止 JavaScript 访问
 	})
+	r.Use(sessions.Sessions("mysession", store))                                                // 使用 Cookie 存储会话
+	r.Use(middleware.NewLoginMiddleware().IgnorePaths("/users/login", "/users/signup").Build()) // 使用自定义的会话中间件
 	return r
 }
