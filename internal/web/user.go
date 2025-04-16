@@ -1,12 +1,15 @@
 package web
 
 import (
+	"fmt"
 	"regexp"
+	"time"
 
 	"github.com/Fairy-nn/inspora/internal/domain"
 	"github.com/Fairy-nn/inspora/internal/service"
 	"github.com/gin-contrib/sessions"
 	"github.com/gin-gonic/gin"
+	"github.com/golang-jwt/jwt"
 )
 
 // 用户有关的路由
@@ -20,7 +23,7 @@ type UserHandler struct {
 func (u *UserHandler) RegisterRoutes(r *gin.Engine) {
 	ug := r.Group("/user")        // 用户相关路由
 	ug.POST("/signup", u.SignUp)  // 注册
-	ug.POST("/login", u.Login)    // 登录
+	ug.POST("/login", u.LoginJWT) // 登录
 	ug.PUT("/edit", u.Edit)       // 编辑用户信息
 	ug.GET("/profile", u.Profile) // 获取用户信息
 }
@@ -142,18 +145,77 @@ func (u *UserHandler) Login(ctx *gin.Context) {
 	}
 	// 设置session
 	session := sessions.Default(ctx) // 获取session
-	session.Set("userID", user.Id)   // 将用户ID存入session
+	session.Set("userID", user.ID)   // 将用户ID存入session
 	session.Save()
 
 	ctx.JSON(200, gin.H{"message": "登录成功"}) // 返回登录成功的响应
 }
 
-// 编辑用户信息
-func (u *UserHandler) Edit(ctx *gin.Context) {
+// 登录使用JWT
+func (u *UserHandler) LoginJWT(ctx *gin.Context) {
+	// 定义请求体结构体
+	type LoginReq struct {
+		Email    string `json:"email"`
+		Password string `json:"password"`
+	}
+	var req LoginReq
+	if err := ctx.Bind(&req); err != nil { // 绑定请求体到结构体
+		ctx.JSON(400, gin.H{"error": "请求体格式错误"})
+		return
+	}
 
+	user, err := u.svc.Login(ctx, domain.User{
+		Email:    req.Email,
+		Password: req.Password,
+	}) // 调用服务层的登录方法
+	fmt.Print("这是用户ID:", user.ID)
+	fmt.Println("这是用户emile:", user.Email)
+
+	if err != nil {
+		if err.Error() == "密码或邮箱不正确" {
+			ctx.JSON(400, gin.H{"error": "密码或邮箱不正确"})
+			return
+		} else if err.Error() == "用户不存在" {
+			ctx.JSON(400, gin.H{"error": "用户不存在"})
+			return
+		}
+		ctx.JSON(500, gin.H{"error": "登录失败"})
+		return
+	}
+
+	// 生成JWT令牌
+	claims := jwt.MapClaims{
+		"id":  user.ID,                                   // 用户ID
+		"exp": jwt.TimeFunc().Add(time.Hour * 24).Unix(), // 过期时间为24小时
+		"iat": jwt.TimeFunc().Unix(),                     // 签发时间
+	}
+	token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
+	// fmt.Println("这是用户IDffffffff:", user.ID)
+	// fmt.Println("这是用户IDggggggggg:", claims["id"])
+	tokenString, err := token.SignedString([]byte("my_secret_key"))
+	if err != nil {
+		ctx.JSON(500, gin.H{"error": "生成JWT失败"})
+		return
+	}
+	ctx.Header("jwt", tokenString) // 将JWT令牌添加到响应头中
+
+	ctx.JSON(200, gin.H{"message": "登录成功"}) // 返回登录成功的响应
 }
 
 // 获取用户信息
 func (u *UserHandler) Profile(ctx *gin.Context) {
+	// 类型断言
+	c, _ := ctx.Get("claims")
+	claims, ok := c.(jwt.MapClaims) // 将 claims 转换为 jwt.MapClaims 类型，以便访问其中的字段
+	if !ok {
+		ctx.JSON(400, gin.H{"error": "获取用户信息失败"})
+		return
+	}
+
+	fmt.Println("这是用户ID:", claims["id"])
+}
+
+// 编辑用户信息
+func (u *UserHandler) Edit(ctx *gin.Context) {
 
 }

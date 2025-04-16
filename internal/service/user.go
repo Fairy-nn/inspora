@@ -2,6 +2,7 @@ package service
 
 import (
 	"errors"
+	"fmt"
 
 	"github.com/Fairy-nn/inspora/internal/domain"
 	"github.com/Fairy-nn/inspora/internal/repository"
@@ -42,7 +43,8 @@ var (
 func (svc *UserService) Login(ctx *gin.Context, u domain.User) (domain.User, error) {
 	// 根据邮箱查找用户
 	user, err := svc.repo.GetByEmail(ctx, u.Email)
-	if err != nil { // 如果没有找到用户，返回错误
+	fmt.Printf("user:%+v", user) // DEBUG: 打印用户信息
+	if err != nil {              // 如果没有找到用户，返回错误
 		if errors.Is(err, errUserNotFound) {
 			return domain.User{}, errUserNotFound
 		}

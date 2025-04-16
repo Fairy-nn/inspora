@@ -45,5 +45,6 @@ func (repo *UserRepository) GetByEmail(ctx context.Context, email string) (domai
 	return domain.User{
 		Email:    user.Email,
 		Password: user.Password,
+		ID:       user.ID,
 	}, nil
 }

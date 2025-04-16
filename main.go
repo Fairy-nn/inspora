@@ -47,7 +47,7 @@ func initDB() *gorm.DB {
 
 func setcookie(r *gin.Engine) *gin.Engine {
 	// 从环境变量加载密钥
-	secret := []byte("my-secure-secret-key") // 替换为更复杂的密钥
+	secret := []byte("my-secure-secret-key")
 	store := cookie.NewStore(secret)
 	store.Options(sessions.Options{
 		Path:     "/",
@@ -55,7 +55,8 @@ func setcookie(r *gin.Engine) *gin.Engine {
 		Secure:   true, // 仅在 HTTPS 下传输
 		HttpOnly: true, // 禁止 JavaScript 访问
 	})
-	r.Use(sessions.Sessions("mysession", store))                                                // 使用 Cookie 存储会话
-	r.Use(middleware.NewLoginMiddleware().IgnorePaths("/users/login", "/users/signup").Build()) // 使用自定义的会话中间件
+	r.Use(sessions.Sessions("mysession", store)) // 使用 Cookie 存储会话
+	//r.Use(middleware.NewLoginMiddleware().IgnorePaths("/users/login", "/users/signup").Build()) // 使用自定义的会话中间件
+	r.Use(middleware.NewLoginMiddlewareJWT().IgnorePaths("/user/login", "/user/signup").Build()) // 使用 JWT 中间件
 	return r
 }
