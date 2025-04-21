@@ -71,3 +71,13 @@ func (u *UserDAO) GetByEmail(ctx context.Context, email string) (*User, error) {
 	}
 	return user, nil // 返回找到的用户
 }
+
+// GetByID 根据用户ID获取用户信息
+func (ud *UserDAO) GetByID(ctx context.Context, id int64) (User, error) {
+	var user User
+	err := ud.db.WithContext(ctx).Where("id = ?", id).First(&user).Error
+	if err != nil {
+		return User{}, err
+	}
+	return user, nil
+}

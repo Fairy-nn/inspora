@@ -2,6 +2,7 @@ package main
 
 import (
 	"github.com/Fairy-nn/inspora/internal/repository"
+	"github.com/Fairy-nn/inspora/internal/repository/cache"
 	"github.com/Fairy-nn/inspora/internal/repository/dao"
 	"github.com/Fairy-nn/inspora/internal/service"
 	"github.com/Fairy-nn/inspora/internal/web"
@@ -26,8 +27,10 @@ func main() {
 }
 
 func initUser(db *gorm.DB) *web.UserHandler {
+	userCache := cache.NewUserCacheV1("localhost:6379")
 	ud := dao.NewUserDAO(db)
-	repo := repository.NewUserRepository(ud)
+	// repo := repository.NewUserRepository(ud, nil) // 创建用户存储库
+	repo := repository.NewUserRepository(ud, userCache) // 创建用户存储库
 	svc := service.NewUserService(repo)
 	u := web.NewUserHandler(svc) // 创建用户处理器
 	return u

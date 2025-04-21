@@ -1,11 +1,13 @@
 package service
 
 import (
+	"context"
 	"errors"
 	"fmt"
 
 	"github.com/Fairy-nn/inspora/internal/domain"
 	"github.com/Fairy-nn/inspora/internal/repository"
+	"github.com/Fairy-nn/inspora/internal/repository/cache"
 	"github.com/gin-gonic/gin"
 	"golang.org/x/crypto/bcrypt"
 )
@@ -61,7 +63,15 @@ func (svc *UserService) Login(ctx *gin.Context, u domain.User) (domain.User, err
 	// 登录逻辑
 	return user, nil
 }
-// Profile 获取用户信息
-func (svc *UserService) Profile(){
 
+// Profile 获取用户信息
+func (svc *UserService) Profile(ctx context.Context, userID int64) (domain.User, error) {
+	user, err := svc.repo.GetByID(ctx, userID)
+	if err != nil {
+		if err == cache.ErrKeyNotExist {
+			return domain.User{}, err
+		}
+		return domain.User{}, err
+	}
+	return user, nil
 }
