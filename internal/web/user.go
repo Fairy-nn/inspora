@@ -190,8 +190,6 @@ func (u *UserHandler) LoginJWT(ctx *gin.Context) {
 		"iat": jwt.TimeFunc().Unix(),                     // 签发时间
 	}
 	token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
-	// fmt.Println("这是用户IDffffffff:", user.ID)
-	// fmt.Println("这是用户IDggggggggg:", claims["id"])
 	tokenString, err := token.SignedString([]byte("my_secret_key"))
 	if err != nil {
 		ctx.JSON(500, gin.H{"error": "生成JWT失败"})

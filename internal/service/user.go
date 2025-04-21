@@ -61,3 +61,7 @@ func (svc *UserService) Login(ctx *gin.Context, u domain.User) (domain.User, err
 	// 登录逻辑
 	return user, nil
 }
+// Profile 获取用户信息
+func (svc *UserService) Profile(){
+	
+}
