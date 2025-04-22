@@ -1,3 +1,4 @@
+--解决并发问题
 --验证码在redis上的key
 local key=KEY[1] --验证码的key
 local cntKey=key..":cnt" --验证码的key+cnt
