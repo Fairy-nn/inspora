@@ -24,3 +24,7 @@ func NewCodeRepository(cache *cache.CodeCache) *CodeRepository {
 func (r *CodeRepository) Store(ctx context.Context, biz, phone, code string) error {
 	return r.cache.Set(ctx, biz, phone, code)
 }
+
+func (r *CodeRepository) Verify(ctx context.Context, biz, phone, code string) (bool, error) {
+	return r.cache.Verify(ctx, biz, phone, code)
+}

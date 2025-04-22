@@ -14,3 +14,4 @@ elseif ttl==-2 or ttl<540 then --键不存在或过期时间小于540秒
     redis.call("expire", cntKey, 600)
 else --键存在且过期时间大于540秒
     return -1    
+end
