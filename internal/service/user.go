@@ -80,12 +80,15 @@ func (svc *UserService) Profile(ctx context.Context, userID int64) (domain.User,
 // 通过手机号获取用户信息
 func (u *UserService) FindOrCreateUser(ctx *gin.Context, phone string) (domain.User, error) {
 	// 先尝试获取用户信息
+	
 	user, err := u.repo.GetByPhone(ctx, phone)
 	if err == nil {
-		return user, nil // 如果存在用户信息，直接返回
+		//fmt.Printf("用户信息已存在 %+v\n", user) // DEBUG: 打印用户信息
+		return user, nil                      // 如果存在用户信息，直接返回
 	}
 	// 如果用户存在但不是预期的错误，返回错误
 	if err != repository.ErrUserNotFound {
+		//fmt.Printf("获取用户信息失败sssss: %v\n", err) // DEBUG: 打印错误信息
 		return domain.User{}, err
 	}
 
@@ -95,8 +98,8 @@ func (u *UserService) FindOrCreateUser(ctx *gin.Context, phone string) (domain.U
 	})
 	// 如果创建用户时发生错误，检查是否是重复条目错误
 	if err != nil && err != repository.ErrUserDuplicateEmail {
+
 		return domain.User{}, err
 	}
-	//
 	return u.repo.GetByPhone(ctx, phone)
 }

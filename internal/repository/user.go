@@ -25,7 +25,7 @@ func NewUserRepository(dao *dao.UserDAO, cache *cache.UserCache) *UserRepository
 }
 
 var (
-	errUserNotFound = errors.New("用户不存在")
+	errUserNotFound       = errors.New("用户不存在")
 	ErrUserNotFound       = dao.ErrUserNotFound
 	ErrUserDuplicateEmail = dao.ErrUserDuplicateEmail
 )
@@ -92,8 +92,10 @@ func (r *UserRepository) GetByPhone(ctx context.Context, phone string) (domain.U
 	user, err := r.dao.GetByPhone(ctx, phone)
 	if err != nil {
 		if errors.Is(err, ErrUserNotFound) {
+			//fmt.Println("用户不存在%+v", err) // DEBUG: 打印用户不存在的提示
 			return domain.User{}, ErrUserNotFound // 用户不存在
 		}
+		//fmt.Println("获取用户信息失败%+v", err) // DEBUG: 打印获取用户信息失败的提示
 		return domain.User{}, err // 其他错误
 	}
 	// 返回用户信息

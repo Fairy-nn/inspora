@@ -1,17 +1,17 @@
--- 验证码验证
-local key=KEY[1]
-local expectedCode=ARGV[1]
-local cnt =tonumber(redis.call("get", key..":cnt")) --获取验证码的次数
-local code=redis.call("get", key) --获取验证码的值
+local key = KEYS[1]
+local expectedCode = ARGV[1]
+local cnt = tonumber(redis.call("get", key.."cnt"))
+local code = redis.call("get", key)
+
 if cnt == nil or cnt <= 0 then
-    return -1  --验证码已失效
+    return -1   -- user has used all attempts
 elseif code == nil then
-    return -2 --验证码已过期
+    return -2   -- code does not exist
 elseif expectedCode == code then
-    redis.call("del", key.."cnt")  --删除验证码的次数
-    redis.call("del", key)  --删除验证码的值
-    return 0 --验证码正确
+    redis.call("del", key.."cnt") -- delete the count key
+    redis.call("del", key) -- delete the code key
+    return 0   -- code is correct
 else
-    redis.call("decr", key..":cnt") --减少验证码的次数
-    return -2 --验证码错误
+    redis.call("decr", key.."cnt") -- decrement the count
+    return -2   -- code is incorrect
 end

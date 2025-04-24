@@ -16,16 +16,16 @@ type CodeService struct {
 
 func NewCodeService(repo *repository.CodeRepository, smsSvc sms.Service) *CodeService {
 	return &CodeService{
-		repo: repo,
+		repo:   repo,
 		smsSvc: smsSvc,
 	}
 }
-
 func (s *CodeService) Send(ctx context.Context, biz, phone string) error {
 	// 生成验证码
 	code := s.generateCode() // 生成验证码
 	// 存储到redis
-	err := s.repo.Store(ctx, biz, phone, code) // 存储验证码到缓存
+	err := s.repo.Store(ctx, biz, phone, code)
+
 	if err != nil {
 		return fmt.Errorf("验证码存储失败: %w", err) // 返回错误
 	}

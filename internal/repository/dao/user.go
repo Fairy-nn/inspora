@@ -89,6 +89,9 @@ func (ud *UserDAO) GetByPhone(ctx context.Context, phone string) (User, error) {
 	var user User
 	err := ud.db.WithContext(ctx).Where("phone = ?", phone).First(&user).Error
 	if err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return User{}, ErrUserNotFound
+		}
 		return User{}, err
 	}
 	return user, nil

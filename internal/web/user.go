@@ -249,6 +249,8 @@ func (u *UserHandler) SendSMS(ctx *gin.Context) {
 			return
 		}
 		ctx.JSON(500, gin.H{"error": "发送验证码失败"})
+		// 打印详细的错误信息
+		fmt.Printf("发送验证码失败: %v\n", err) // DEBUG: 打印错误信息
 		return
 	}
 	ctx.JSON(200, gin.H{"message": "验证码发送成功"})
@@ -301,7 +303,7 @@ func (u *UserHandler) LoginSMS(ctx *gin.Context) {
 func (u *UserHandler) SetJWT(ctx *gin.Context, uid int64) error {
 	// 生成JWT令牌
 	claims := jwt.MapClaims{
-		"id":  uid,                                   // 用户ID
+		"id":  uid,                                       // 用户ID
 		"exp": jwt.TimeFunc().Add(time.Hour * 24).Unix(), // 过期时间为24小时
 		"iat": jwt.TimeFunc().Unix(),                     // 签发时间
 	}
@@ -316,4 +318,3 @@ func (u *UserHandler) SetJWT(ctx *gin.Context, uid int64) error {
 	ctx.JSON(200, gin.H{"message": "登录成功"}) // 返回登录成功的响应
 	return nil
 }
-

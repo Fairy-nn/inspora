@@ -2,12 +2,16 @@ package cache
 
 import (
 	"context"
+	_ "embed"
 	"errors"
+	"fmt"
 
 	"github.com/redis/go-redis/v9"
 )
 
-var luaSetCode string    // lua脚本，设置验证码
+//go:embed lua/set_code.lua
+var luaSetCode string // lua脚本，设置验证码
+//go:embed lua/verify_code.lua
 var luaVerifyCode string // lua脚本，验证验证码
 
 var (
@@ -29,14 +33,16 @@ func NewCodeCache(client redis.Cmdable) *CodeCache {
 // Set 方法用于设置验证码
 func (c *CodeCache) Set(ctx context.Context, biz, phone, code string) error {
 	//传入上下文 ctx、脚本内容、键列表 []string{biz, phone} 和验证码 code，并将执行结果转换为整数类型。
-	res, err := c.client.Eval(ctx, luaSetCode, []string{biz, phone}, code).Int()
+	res, err := c.client.Eval(ctx, luaSetCode, []string{fmt.Sprintf("code:%s:%s", biz, phone)}, code).Int()
 	if err != nil {
+		fmt.Printf("验证码存储失败: %v\n", err) // 打印错误信息
 		return err
 	}
 	switch res {
 	case 0:
 		return nil // 成功
 	case -1:
+		fmt.Println("验证码发送次数过多")      // 打印错误信息
 		return ErrCodeSentTomanyTimes // 发送次数过多
 	default:
 		return errors.New("系统错误")
@@ -45,7 +51,7 @@ func (c *CodeCache) Set(ctx context.Context, biz, phone, code string) error {
 
 // Verify 方法用于验证验证码
 func (c *CodeCache) Verify(ctx context.Context, biz, phone, code string) (bool, error) {
-	res, err := c.client.Eval(ctx, luaVerifyCode, []string{biz, phone}, code).Int()
+	res, err := c.client.Eval(ctx, luaVerifyCode, []string{fmt.Sprintf("code:%s:%s", biz, phone)}, code).Int()
 	if err != nil {
 		return false, err
 	}
