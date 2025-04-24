@@ -8,4 +8,5 @@ type User struct {
 	Password string `json:"password"`
 	Username string `json:"username"`
 	Ctime    int64  `json:"ctime"` // 创建时间
+	Phone    string `json:"phone"`
 }

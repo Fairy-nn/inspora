@@ -2,6 +2,7 @@ package dao
 
 import (
 	"context"
+	"database/sql"
 	"errors"
 	"time"
 
@@ -11,12 +12,13 @@ import (
 
 // User 用户结构体,直接对应于数据库表
 type User struct {
-	ID       int64  `gorm:"primaryKey,autoIncrement"` // 主键
-	Email    string `gorm:"type:varchar(100);unique"` // 邮箱，唯一索引
-	Username string `gorm:"type:varchar(100)"`        // 用户名
-	Password string `gorm:"type:varchar(100)"`
-	Ctime    int64  `gorm:"autoCreateTime"`
-	Utime    int64  `gorm:"autoUpdateTime"`
+	ID       int64          `gorm:"primaryKey,autoIncrement"` // 主键
+	Email    sql.NullString `gorm:"type:varchar(100);unique"` // 邮箱，唯一索引
+	Username string         `gorm:"type:varchar(100)"`        // 用户名
+	Password string         `gorm:"type:varchar(100)"`
+	Ctime    int64          `gorm:"autoCreateTime"`
+	Utime    int64          `gorm:"autoUpdateTime"`
+	Phone    sql.NullString `gorm:"type:varchar(20);unique"` // 手机号，唯一索引会冲突,所以允许可以为空
 }
 
 // 在这里添加其他字段，例如用户名、头像等
@@ -46,7 +48,7 @@ func (u *UserDAO) Insert(ctx context.Context, user *User) error {
 	user.Ctime = now
 	user.Utime = now
 	if user.Username == "" {
-		user.Username = user.Email // 如果没有提供用户名，则使用邮箱作为用户名
+		user.Username = "未设置昵称" // 如果没有提供用户名，则默认使用“未设置昵称”为用户名
 	}
 	err := u.db.WithContext(ctx).Create(user).Error // 插入用户数据
 	if mysqlErr, ok := err.(*mysql.MySQLError); ok {
@@ -76,6 +78,16 @@ func (u *UserDAO) GetByEmail(ctx context.Context, email string) (*User, error) {
 func (ud *UserDAO) GetByID(ctx context.Context, id int64) (User, error) {
 	var user User
 	err := ud.db.WithContext(ctx).Where("id = ?", id).First(&user).Error
+	if err != nil {
+		return User{}, err
+	}
+	return user, nil
+}
+
+// GetByPhone 根据手机号获取用户信息
+func (ud *UserDAO) GetByPhone(ctx context.Context, phone string) (User, error) {
+	var user User
+	err := ud.db.WithContext(ctx).Where("phone = ?", phone).First(&user).Error
 	if err != nil {
 		return User{}, err
 	}

@@ -2,6 +2,7 @@ package repository
 
 import (
 	"context"
+	"database/sql"
 	"errors"
 	"log"
 	"sync"
@@ -25,15 +26,14 @@ func NewUserRepository(dao *dao.UserDAO, cache *cache.UserCache) *UserRepository
 
 var (
 	errUserNotFound = errors.New("用户不存在")
+	ErrUserNotFound       = dao.ErrUserNotFound
+	ErrUserDuplicateEmail = dao.ErrUserDuplicateEmail
 )
 
 // Create 创建用户
 func (repo *UserRepository) Create(ctx context.Context, u domain.User) error {
-	return repo.dao.Insert(ctx, &dao.User{
-		Email:    u.Email,
-		Password: u.Password,
-		Username: u.Username,
-	})
+	userEntity := repo.domainToEntity(u)
+	return repo.dao.Insert(ctx, &userEntity) // 插入用户数据到数据库
 	// TODO:缓存
 }
 
@@ -47,11 +47,7 @@ func (repo *UserRepository) GetByEmail(ctx context.Context, email string) (domai
 		return domain.User{}, err // 其他错误
 	}
 	// 返回用户信息
-	return domain.User{
-		Email:    user.Email,
-		Password: user.Password,
-		ID:       user.ID,
-	}, nil
+	return repo.enityToDomain(*user), nil
 }
 
 var mutex sync.Mutex
@@ -73,12 +69,8 @@ func (r *UserRepository) GetByID(ctx context.Context, id int64) (domain.User, er
 	}
 
 	// 将数据库中的用户信息转换为domain.User类型
-	user = domain.User{
-		ID:       daoUser.ID,
-		Email:    daoUser.Email,
-		Username: daoUser.Username,
-		Password: daoUser.Password,
-	}
+	user = r.enityToDomain(daoUser)
+
 	// 将用户信息存入缓存
 	// 这里避免缓存失败，使用重试机制
 	maxRetries := 3
@@ -93,4 +85,39 @@ func (r *UserRepository) GetByID(ctx context.Context, id int64) (domain.User, er
 		log.Printf("Failed to set user in cache after %d attempts: %v", maxRetries, err)
 	}
 	return user, nil
+}
+
+// 根据手机号获取用户信息
+func (r *UserRepository) GetByPhone(ctx context.Context, phone string) (domain.User, error) {
+	user, err := r.dao.GetByPhone(ctx, phone)
+	if err != nil {
+		if errors.Is(err, ErrUserNotFound) {
+			return domain.User{}, ErrUserNotFound // 用户不存在
+		}
+		return domain.User{}, err // 其他错误
+	}
+	// 返回用户信息
+	return r.enityToDomain(user), nil
+}
+
+// 将dao.User转换为domain.User
+func (r *UserRepository) enityToDomain(u dao.User) domain.User {
+	return domain.User{
+		ID:       u.ID,
+		Email:    u.Email.String,
+		Phone:    u.Phone.String,
+		Username: u.Username,
+		Password: u.Password,
+	}
+}
+
+// 将domain.User转换为dao.User
+func (r *UserRepository) domainToEntity(u domain.User) dao.User {
+	return dao.User{
+		ID:       u.ID,
+		Email:    sql.NullString{String: u.Email, Valid: u.Email != ""},
+		Username: u.Username,
+		Password: u.Password,
+		Phone:    sql.NullString{String: u.Phone, Valid: u.Phone != ""},
+	}
 }

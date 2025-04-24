@@ -17,15 +17,18 @@ type UserHandler struct {
 	svc         *service.UserService // 用户服务
 	emailExp    *regexp.Regexp       // 邮箱正则表达式
 	passwordExp *regexp.Regexp       // 密码正则表达式
+	codeSvc     *service.CodeService // 短信验证码服务
 }
 
 // RegisterRoutes 注册路由
 func (u *UserHandler) RegisterRoutes(r *gin.Engine) {
-	ug := r.Group("/user")        // 用户相关路由
-	ug.POST("/signup", u.SignUp)  // 注册
-	ug.POST("/login", u.LoginJWT) // 登录
-	ug.PUT("/edit", u.Edit)       // 编辑用户信息
-	ug.GET("/profile", u.Profile) // 获取用户信息
+	ug := r.Group("/user")                  // 用户相关路由
+	ug.POST("/signup", u.SignUp)            // 注册
+	ug.POST("/login", u.LoginJWT)           // 登录
+	ug.PUT("/edit", u.Edit)                 // 编辑用户信息
+	ug.GET("/profile", u.Profile)           // 获取用户信息
+	ug.POST("/login_sms/send", u.SendSMS)   // 发送短信验证码
+	ug.POST("/login_sms/login", u.LoginSMS) // 验证短信验证码
 }
 
 // Cors 设置
@@ -217,3 +220,99 @@ func (u *UserHandler) Profile(ctx *gin.Context) {
 func (u *UserHandler) Edit(ctx *gin.Context) {
 
 }
+
+// 发送验证码并验证手机号码是否符合格式
+func (u *UserHandler) SendSMS(ctx *gin.Context) {
+	type SendSMSRequest struct {
+		Phone string `json:"phone"`
+	}
+	var req SendSMSRequest
+	if err := ctx.Bind(&req); err != nil {
+		ctx.JSON(400, gin.H{"error": "请求体格式错误"})
+		return
+	}
+	// 正则表达式验证手机号格式
+	phoneExp := regexp.MustCompile(`^1[3-9]\d{9}$`)
+	if !phoneExp.MatchString(req.Phone) {
+		ctx.JSON(400, gin.H{"error": "手机号格式不正确"})
+		return
+	}
+	// 调用服务层的发送验证码方法
+	err := u.codeSvc.Send(ctx, "login", req.Phone) // 发送验证码
+	if err != nil {
+		if err.Error() == "验证码存储失败" {
+			ctx.JSON(500, gin.H{"error": "系统异常，请稍后再试"})
+			return
+		} else if err.Error() == "验证码发送失败" {
+			ctx.JSON(500, gin.H{"error": "验证码发送失败"})
+			return
+		}
+		ctx.JSON(500, gin.H{"error": "发送验证码失败"})
+		return
+	}
+	ctx.JSON(200, gin.H{"message": "验证码发送成功"})
+}
+
+// 校验短信验证码并使用验证码登录
+func (u *UserHandler) LoginSMS(ctx *gin.Context) {
+	type LoginRequest struct {
+		Phone string `json:"phone"`
+		Code  string `json:"code"`
+	}
+	var req LoginRequest
+	if err := ctx.Bind(&req); err != nil {
+		ctx.JSON(400, gin.H{"error": "请求体格式错误"})
+		return
+	}
+	// 正则表达式验证手机号格式
+	phoneExp := regexp.MustCompile(`^1[3-9]\d{9}$`)
+	if !phoneExp.MatchString(req.Phone) {
+		ctx.JSON(400, gin.H{"error": "手机号格式不正确"})
+		return
+	}
+	// 校验验证码
+	_, err := u.codeSvc.Verify(ctx, "login", req.Phone, req.Code) // 校验验证码
+	if err != nil {
+		if err.Error() == "验证码验证失败" {
+			ctx.JSON(500, gin.H{"error": "验证码验证失败"})
+			return
+		}
+		ctx.JSON(500, gin.H{"error": "系统异常，请稍后再试"})
+		return
+	}
+
+	// 登录成功，获取用户信息,手机号码可能是新用户，所以需要根据手机号获取或者创建用户信息
+	user, err := u.svc.FindOrCreateUser(ctx, req.Phone) // 根据手机号获取用户信息
+	if err != nil {
+		ctx.JSON(500, gin.H{"error": "获取用户信息失败"})
+		return
+	}
+
+	// 设置JWT令牌
+	err = u.SetJWT(ctx, user.ID)
+	if err != nil {
+		ctx.JSON(500, gin.H{"error": "设置JWT失败"})
+		return
+	}
+}
+
+// 设置JWT令牌
+func (u *UserHandler) SetJWT(ctx *gin.Context, uid int64) error {
+	// 生成JWT令牌
+	claims := jwt.MapClaims{
+		"id":  uid,                                   // 用户ID
+		"exp": jwt.TimeFunc().Add(time.Hour * 24).Unix(), // 过期时间为24小时
+		"iat": jwt.TimeFunc().Unix(),                     // 签发时间
+	}
+	token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
+	tokenString, err := token.SignedString([]byte("my_secret_key"))
+	if err != nil {
+		ctx.JSON(500, gin.H{"error": "生成JWT失败"})
+		return err
+	}
+	ctx.Header("jwt", tokenString) // 将JWT令牌添加到响应头中
+
+	ctx.JSON(200, gin.H{"message": "登录成功"}) // 返回登录成功的响应
+	return nil
+}
+
