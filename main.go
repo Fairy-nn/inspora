@@ -5,11 +5,13 @@ import (
 	"github.com/Fairy-nn/inspora/internal/repository/cache"
 	"github.com/Fairy-nn/inspora/internal/repository/dao"
 	"github.com/Fairy-nn/inspora/internal/service"
+	"github.com/Fairy-nn/inspora/internal/service/sms/memory"
 	"github.com/Fairy-nn/inspora/internal/web"
 	"github.com/Fairy-nn/inspora/internal/web/middleware"
 	"github.com/gin-contrib/sessions"
 	"github.com/gin-contrib/sessions/cookie"
 	"github.com/gin-gonic/gin"
+	"github.com/redis/go-redis/v9"
 	"gorm.io/driver/mysql"
 	"gorm.io/gorm"
 )
@@ -32,7 +34,17 @@ func initUser(db *gorm.DB) *web.UserHandler {
 	// repo := repository.NewUserRepository(ud, nil) // 创建用户存储库
 	repo := repository.NewUserRepository(ud, userCache) // 创建用户存储库
 	svc := service.NewUserService(repo)
-	u := web.NewUserHandler(svc) // 创建用户处理器
+
+	redisClient := redis.NewClient(&redis.Options{
+		Addr: "localhost:6379",
+	})
+	codeCache := cache.NewCodeCache(redisClient) // 创建验证码缓存
+
+	//codeCache := cache.NewCodeCache("localhost:6379")   // 创建验证码缓存
+	codeRepo := repository.NewCodeRepository(codeCache) // 创建验证码存储库
+	smsSvc := memory.NewMemorySMSService()
+	svcCode := service.NewCodeService(codeRepo, smsSvc) // 创建验证码服务
+	u := web.NewUserHandler(svc, svcCode)               // 创建用户处理器
 	return u
 }
 

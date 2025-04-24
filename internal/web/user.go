@@ -50,7 +50,7 @@ func (u *UserHandler) Cors(r *gin.Engine) {
 
 // NewUserHandler 创建用户处理器
 // 该函数用于创建一个新的用户处理器实例，接收一个用户服务作为参数
-func NewUserHandler(svc *service.UserService) *UserHandler {
+func NewUserHandler(svc *service.UserService, codeSvc *service.CodeService) *UserHandler {
 	const (
 		emailRegex    = `^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$`
 		passwordRegex = `^[a-zA-Z0-9]{6,16}$` //仅包含字母和数字，长度在 6 - 16 位
@@ -63,6 +63,7 @@ func NewUserHandler(svc *service.UserService) *UserHandler {
 		svc:         svc,
 		emailExp:    emailExp,
 		passwordExp: passwordExp,
+		codeSvc:     codeSvc,
 	}
 }
 
