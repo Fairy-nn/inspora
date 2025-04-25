@@ -19,12 +19,17 @@ var (
 	ErrCodeTriesTooMany    = errors.New("验证码尝试次数过多")
 )
 
+type CodeCacheInterface interface {
+	Set(ctx context.Context, biz, phone, code string) error
+	Verify(ctx context.Context, biz, phone, code string) (bool, error)
+}
+
 // 用于与 Redis 进行交互
 type CodeCache struct {
 	client redis.Cmdable
 }
 
-func NewCodeCache(client redis.Cmdable) *CodeCache {
+func NewCodeCache(client redis.Cmdable) CodeCacheInterface {
 	return &CodeCache{
 		client: client,
 	}

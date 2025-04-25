@@ -9,17 +9,23 @@ import (
 	"github.com/Fairy-nn/inspora/internal/service/sms"
 )
 
+type CodeServiceInterface interface {
+	Send(ctx context.Context, biz, phone string) error
+	Verify(ctx context.Context, biz, phone, code string) (bool, error)
+}
+
 type CodeService struct {
-	repo   *repository.CodeRepository
+	repo   repository.CodeRepositoryInterface
 	smsSvc sms.Service
 }
 
-func NewCodeService(repo *repository.CodeRepository, smsSvc sms.Service) *CodeService {
+func NewCodeService(repo repository.CodeRepositoryInterface, smsSvc sms.Service) CodeServiceInterface {
 	return &CodeService{
 		repo:   repo,
 		smsSvc: smsSvc,
 	}
 }
+
 func (s *CodeService) Send(ctx context.Context, biz, phone string) error {
 	// 生成验证码
 	code := s.generateCode() // 生成验证码

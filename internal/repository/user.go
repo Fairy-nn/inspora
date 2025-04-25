@@ -12,12 +12,19 @@ import (
 	"github.com/Fairy-nn/inspora/internal/repository/dao"
 )
 
-type UserRepository struct {
-	dao   *dao.UserDAO
-	cache *cache.UserCache
+type UserRepositoryInterface interface {
+	Create(ctx context.Context, u domain.User) error
+	GetByPhone(ctx context.Context, phone string) (domain.User, error)
+	GetByID(ctx context.Context, id int64) (domain.User, error)
+	GetByEmail(ctx context.Context, email string) (domain.User, error)
 }
 
-func NewUserRepository(dao *dao.UserDAO, cache *cache.UserCache) *UserRepository {
+type UserRepository struct {
+	dao   dao.UserDaoInterface
+	cache cache.UserCacheInterface
+}
+
+func NewUserRepository(dao dao.UserDaoInterface, cache cache.UserCacheInterface) UserRepositoryInterface {
 	return &UserRepository{
 		dao:   dao,
 		cache: cache,

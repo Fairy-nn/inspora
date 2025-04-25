@@ -12,6 +12,12 @@ import (
 
 var ErrKeyNotExist = redis.Nil
 
+type UserCacheInterface interface {
+	Get(ctx context.Context, id int64) (domain.User, error)
+	Set(ctx context.Context, user domain.User) error
+	Key(id int64) string
+}
+
 // client 可以接收单机redis客户端或集群redis客户端
 // expiation 缓存的过期时间
 type UserCache struct {
@@ -21,8 +27,8 @@ type UserCache struct {
 
 // 接受一个redis服务器地址addr
 // expiation 设置为15分钟
-func NewUserCacheV1(addr string) *UserCache {
-	client := redis.NewClient(&redis.Options{})
+func NewUserCacheV1(client redis.Cmdable) UserCacheInterface {
+	// client := redis.NewClient(&redis.Options{})
 	return &UserCache{
 		client:     client,
 		expiration: time.Minute * 15,

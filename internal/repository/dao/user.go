@@ -25,12 +25,19 @@ type User struct {
 type UserInfo struct {
 }
 
+type UserDaoInterface interface {
+	GetByPhone(ctx context.Context, phone string) (User, error)
+	GetByID(ctx context.Context, id int64) (User, error)
+	Insert(ctx context.Context, user *User) error
+	GetByEmail(ctx context.Context, email string) (*User, error)
+}
+
 type UserDAO struct {
 	db *gorm.DB // 数据库连接对象
 }
 
 // NewUserDAO 创建用户数据访问对象
-func NewUserDAO(db *gorm.DB) *UserDAO {
+func NewUserDAO(db *gorm.DB) UserDaoInterface {
 	return &UserDAO{
 		db: db,
 	}

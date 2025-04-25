@@ -12,11 +12,16 @@ var (
 	ErrCodeTriedTooManyTimes = cache.ErrCodeTriesTooMany
 )
 
-type CodeRepository struct {
-	cache *cache.CodeCache
+type CodeRepositoryInterface interface {
+	Store(ctx context.Context, biz, phone, code string) error
+	Verify(ctx context.Context, biz, phone, code string) (bool, error)
 }
 
-func NewCodeRepository(cache *cache.CodeCache) *CodeRepository {
+type CodeRepository struct {
+	cache cache.CodeCacheInterface
+}
+
+func NewCodeRepository(cache cache.CodeCacheInterface) CodeRepositoryInterface {
 	return &CodeRepository{
 		cache: cache,
 	}

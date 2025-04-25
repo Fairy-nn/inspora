@@ -12,13 +12,20 @@ import (
 	"golang.org/x/crypto/bcrypt"
 )
 
+type UserServiceInterface interface {
+	SignUp(ctx *gin.Context, u domain.User) error
+	Login(ctx *gin.Context, u domain.User) (domain.User, error)
+	Profile(ctx context.Context, userID int64) (domain.User, error)
+	FindOrCreateUser(ctx *gin.Context, phone string) (domain.User, error)
+}
+
 // UserService 用户服务结构体
 type UserService struct {
-	repo *repository.UserRepository // 用户存储库接口
+	repo repository.UserRepositoryInterface // 用户存储库接口
 
 }
 
-func NewUserService(repo *repository.UserRepository) *UserService {
+func NewUserService(repo repository.UserRepositoryInterface) UserServiceInterface {
 	return &UserService{
 		repo: repo,
 	}
@@ -80,11 +87,11 @@ func (svc *UserService) Profile(ctx context.Context, userID int64) (domain.User,
 // 通过手机号获取用户信息
 func (u *UserService) FindOrCreateUser(ctx *gin.Context, phone string) (domain.User, error) {
 	// 先尝试获取用户信息
-	
+
 	user, err := u.repo.GetByPhone(ctx, phone)
 	if err == nil {
 		//fmt.Printf("用户信息已存在 %+v\n", user) // DEBUG: 打印用户信息
-		return user, nil                      // 如果存在用户信息，直接返回
+		return user, nil // 如果存在用户信息，直接返回
 	}
 	// 如果用户存在但不是预期的错误，返回错误
 	if err != repository.ErrUserNotFound {

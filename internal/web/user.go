@@ -14,10 +14,10 @@ import (
 
 // 用户有关的路由
 type UserHandler struct {
-	svc         *service.UserService // 用户服务
-	emailExp    *regexp.Regexp       // 邮箱正则表达式
-	passwordExp *regexp.Regexp       // 密码正则表达式
-	codeSvc     *service.CodeService // 短信验证码服务
+	svc         service.UserServiceInterface // 用户服务
+	emailExp    *regexp.Regexp               // 邮箱正则表达式
+	passwordExp *regexp.Regexp               // 密码正则表达式
+	codeSvc     service.CodeServiceInterface // 短信验证码服务
 }
 
 // RegisterRoutes 注册路由
@@ -50,7 +50,7 @@ func (u *UserHandler) Cors(r *gin.Engine) {
 
 // NewUserHandler 创建用户处理器
 // 该函数用于创建一个新的用户处理器实例，接收一个用户服务作为参数
-func NewUserHandler(svc *service.UserService, codeSvc *service.CodeService) *UserHandler {
+func NewUserHandler(svc service.UserServiceInterface, codeSvc service.CodeServiceInterface) *UserHandler {
 	const (
 		emailRegex    = `^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$`
 		passwordRegex = `^[a-zA-Z0-9]{6,16}$` //仅包含字母和数字，长度在 6 - 16 位
