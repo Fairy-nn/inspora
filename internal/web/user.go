@@ -213,8 +213,13 @@ func (u *UserHandler) Profile(ctx *gin.Context) {
 		ctx.JSON(400, gin.H{"error": "获取用户信息失败"})
 		return
 	}
-
 	fmt.Println("这是用户ID:", claims["id"])
+	// 返回用户信息
+	ctx.JSON(200, gin.H{
+		"id":       claims["id"],
+		"username": claims["username"],
+		"email":    claims["email"],
+	})
 }
 
 // 编辑用户信息
@@ -241,17 +246,19 @@ func (u *UserHandler) SendSMS(ctx *gin.Context) {
 	// 调用服务层的发送验证码方法
 	err := u.codeSvc.Send(ctx, "login", req.Phone) // 发送验证码
 	if err != nil {
-		if err.Error() == "验证码存储失败" {
-			ctx.JSON(500, gin.H{"error": "系统异常，请稍后再试"})
-			return
-		} else if err.Error() == "验证码发送失败" {
+		if err.Error() == "验证码发送失败" {
 			ctx.JSON(500, gin.H{"error": "验证码发送失败"})
 			return
+		} else if err.Error() == "验证码未过期，请一分钟后再试" {
+			ctx.JSON(500, gin.H{"error": "验证码未过期，请一分钟后再试"})
+			return
+		} else if err.Error() == "验证码发送次数过多" {
+			ctx.JSON(500, gin.H{"error": "验证码发送次数过多"})
+			return
+		} else {
+			ctx.JSON(500, gin.H{"error": "系统异常，请稍后再试"})
+			return
 		}
-		ctx.JSON(500, gin.H{"error": "发送验证码失败"})
-		// 打印详细的错误信息
-		fmt.Printf("发送验证码失败: %v\n", err) // DEBUG: 打印错误信息
-		return
 	}
 	ctx.JSON(200, gin.H{"message": "验证码发送成功"})
 }
@@ -279,9 +286,13 @@ func (u *UserHandler) LoginSMS(ctx *gin.Context) {
 		if err.Error() == "验证码验证失败" {
 			ctx.JSON(500, gin.H{"error": "验证码验证失败"})
 			return
+		} else if err.Error() == "验证码尝试次数过多" {
+			ctx.JSON(500, gin.H{"error": "验证码尝试次数过多"})
+			return
+		} else {
+			ctx.JSON(500, gin.H{"error": "系统异常，请稍后再试"})
+			return
 		}
-		ctx.JSON(500, gin.H{"error": "系统异常，请稍后再试"})
-		return
 	}
 
 	// 登录成功，获取用户信息,手机号码可能是新用户，所以需要根据手机号获取或者创建用户信息

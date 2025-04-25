@@ -10,6 +10,7 @@ import (
 var (
 	ErrCodeSentTooManyTimes  = cache.ErrCodeSentTomanyTimes
 	ErrCodeTriedTooManyTimes = cache.ErrCodeTriesTooMany
+	ErrCodeNotExpired        = cache.ErrCodeNotExpired
 )
 
 type CodeRepositoryInterface interface {
@@ -33,7 +34,12 @@ func (r *CodeRepository) Store(ctx context.Context, biz, phone, code string) err
 	fmt.Printf("phone: %s, code: %s\n", phone, code) // DEBUG: 打印验证码信息
 	err := r.cache.Set(ctx, biz, phone, code)
 	if err != nil {
-		return fmt.Errorf("验证码存储失败le: %w", err)
+		if err == cache.ErrCodeNotExpired {
+			return err
+		}else if err == cache.ErrCodeSentTomanyTimes {
+			return err
+		}
+		return fmt.Errorf("验证码存储失败: %w", err) // 返回错误	
 	}
 	return nil
 }
@@ -41,7 +47,7 @@ func (r *CodeRepository) Store(ctx context.Context, biz, phone, code string) err
 func (r *CodeRepository) Verify(ctx context.Context, biz, phone, code string) (bool, error) {
 	result, err := r.cache.Verify(ctx, biz, phone, code)
 	if err != nil {
-		return false, fmt.Errorf("验证码验证失败: %w", err)
+		return false, err // 返回错误
 	}
 	return result, nil
 }

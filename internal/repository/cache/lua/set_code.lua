@@ -13,6 +13,17 @@ elseif ttl == -2 or ttl < 540 then
     redis.call("set", cntKey, 3) 
     redis.call("expire", cntKey, 600) 
     return 0
-else
+elseif ttl > 540 then
+    local cnt = tonumber(redis.call("get", cntKey)) or 0
+    if cnt > 0 then
+        redis.call("set", key, val)
+        redis.call("expire", key, 600) 
+        redis.call("set", cntKey, cnt - 1) 
+        redis.call("expire", cntKey, 600) 
+        return 1
+    else 
+        return -1
+    end
+else 
     return -1
 end

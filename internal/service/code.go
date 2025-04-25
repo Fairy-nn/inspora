@@ -33,7 +33,7 @@ func (s *CodeService) Send(ctx context.Context, biz, phone string) error {
 	err := s.repo.Store(ctx, biz, phone, code)
 
 	if err != nil {
-		return fmt.Errorf("验证码存储失败: %w", err) // 返回错误
+		return err
 	}
 	// 发送验证码
 	err = s.smsSvc.Send(ctx, biz, []string{code}, phone) // 发送验证码
@@ -54,7 +54,7 @@ func (s *CodeService) Verify(ctx context.Context, biz, phone, code string) (bool
 	// 调用存储库的 Verify 方法验证验证码
 	ok, err := s.repo.Verify(ctx, biz, phone, code) // 验证验证码
 	if err != nil {                                 // 如果验证失败，返回错误
-		return false, fmt.Errorf("验证码验证失败: %w", err) // 返回错误
+		return false, err // 返回错误
 	}
 	return ok, nil // 返回验证结果
 }

@@ -17,6 +17,7 @@ var luaVerifyCode string // lua脚本，验证验证码
 var (
 	ErrCodeSentTomanyTimes = errors.New("验证码发送次数过多")
 	ErrCodeTriesTooMany    = errors.New("验证码尝试次数过多")
+	ErrCodeNotExpired       = errors.New("验证码未过期，请一分钟后再试")
 )
 
 type CodeCacheInterface interface {
@@ -44,10 +45,13 @@ func (c *CodeCache) Set(ctx context.Context, biz, phone, code string) error {
 		return err
 	}
 	switch res {
+	case 1:
+		fmt.Println("验证码未过期，请一分钟后再试") // 打印错误信息
+		return ErrCodeNotExpired // 验证码未过期，请一分钟后再试
 	case 0:
 		return nil // 成功
 	case -1:
-		fmt.Println("验证码发送次数过多")      // 打印错误信息
+		fmt.Println("验证码发送次数过多")  // 打印错误信息
 		return ErrCodeSentTomanyTimes // 发送次数过多
 	default:
 		return errors.New("系统错误")

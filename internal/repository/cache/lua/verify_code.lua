@@ -4,14 +4,14 @@ local cnt = tonumber(redis.call("get", key.."cnt"))
 local code = redis.call("get", key)
 
 if cnt == nil or cnt <= 0 then
-    return -1   -- user has used all attempts
+    return -1
 elseif code == nil then
-    return -2   -- code does not exist
+    return -2 
 elseif expectedCode == code then
-    redis.call("del", key.."cnt") -- delete the count key
-    redis.call("del", key) -- delete the code key
-    return 0   -- code is correct
+    redis.call("del", key.."cnt") 
+    redis.call("del", key)
+    return 0 
 else
-    redis.call("decr", key.."cnt") -- decrement the count
-    return -2   -- code is incorrect
+    redis.call("decr", key.."cnt") 
+    return -2 
 end
