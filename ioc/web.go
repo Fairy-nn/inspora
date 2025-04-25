@@ -3,15 +3,15 @@ package ioc
 import (
 	"github.com/Fairy-nn/inspora/internal/web"
 	"github.com/Fairy-nn/inspora/internal/web/middleware"
-	"github.com/gin-contrib/sessions"
-	"github.com/gin-contrib/sessions/cookie"
 	"github.com/gin-gonic/gin"
 )
 
-func InitGin(middlewares []gin.HandlerFunc, u *web.UserHandler) *gin.Engine {
+func InitGin(middlewares []gin.HandlerFunc, u *web.UserHandler,
+	oauthWechatHandler *web.WechatHandler) *gin.Engine {
 	r := gin.Default()
 	r.Use(middlewares...)
 	u.RegisterRoutes(r)
+	oauthWechatHandler.RegisterRoutes(r)
 	return r
 }
 
@@ -39,17 +39,18 @@ func corsMiddleware() gin.HandlerFunc {
 }
 
 func jwtMiddleware() gin.HandlerFunc {
-	return middleware.NewLoginMiddlewareJWT().IgnorePaths("/user/login", "/user/signup").Build()
+	return middleware.NewLoginMiddlewareJWT().IgnorePaths("/user/login", "/user/signup",
+		"/wechat/authrul", "/wechat/callback").Build()
 }
 
-func sessionMiddleware() gin.HandlerFunc {
-	secret := []byte("my-secure-secret-key")
-	store := cookie.NewStore(secret)
-	store.Options(sessions.Options{
-		Path:     "/",
-		MaxAge:   3600, // 设置会话过期时间（秒）
-		Secure:   true, // 仅在 HTTPS 下传输
-		HttpOnly: true, // 禁止 JavaScript 访问
-	})
-	return sessions.Sessions("mysession", store)
-}
+// func sessionMiddleware() gin.HandlerFunc {
+// 	secret := []byte("my-secure-secret-key")
+// 	store := cookie.NewStore(secret)
+// 	store.Options(sessions.Options{
+// 		Path:     "/",
+// 		MaxAge:   3600, // 设置会话过期时间（秒）
+// 		Secure:   true, // 仅在 HTTPS 下传输
+// 		HttpOnly: true, // 禁止 JavaScript 访问
+// 	})
+// 	return sessions.Sessions("mysession", store)
+// }
