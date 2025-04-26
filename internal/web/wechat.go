@@ -16,7 +16,7 @@ func NewWechatHandler(svc wechat.Service) *WechatHandler {
 
 func (h *WechatHandler) RegisterRoutes(r *gin.Engine) {
 	g := r.Group("/wechat")
-	g.POST("/authrul", h.AuthURL)  // 微信登录
+	g.POST("/authurl", h.AuthURL)  // 微信登录
 	g.Any("/callback", h.Callback) // 微信回调
 
 }

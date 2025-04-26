@@ -1,0 +1,11 @@
+mysql:
+  dsn: "root:root@tcp(localhost:13316)/inspora"
+redis:
+  addr: "localhost:6379"
+jwt:
+  secret: "your_secret_here"
+code:
+  code_tpl_id: 1
+wechat:
+  app_id: "your_app_id"
+  app_secret: "your_app_secret"

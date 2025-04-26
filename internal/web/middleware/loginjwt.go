@@ -6,10 +6,14 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/golang-jwt/jwt"
+	"github.com/spf13/viper"
 )
 
 type LoginMiddlewareJWT struct {
 	paths []string
+}
+type Config struct {
+	Secret string `yaml:"secret"`
 }
 
 func NewLoginMiddlewareJWT() *LoginMiddlewareJWT {
@@ -24,6 +28,15 @@ func (b *LoginMiddlewareJWT) IgnorePaths(paths ...string) *LoginMiddlewareJWT {
 
 // loginMiddleware 中间件函数
 func (b *LoginMiddlewareJWT) Build() gin.HandlerFunc {
+	cfg := Config{ 
+		Secret: "secret", // 默认值
+	}
+	err := viper.UnmarshalKey("jwt", &cfg) // 从配置文件中读取密钥
+	if err != nil {
+		return nil
+	}
+//	tokenString, err := jwt.NewWithClaims(jwt.SigningMethodHS256, jwt.MapClaims{}).SignedString([]byte(cfg.Secret))
+
 	return func(c *gin.Context) {
 		// 获取请求的路径
 		path := c.Request.URL.Path

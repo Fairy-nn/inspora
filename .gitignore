@@ -30,3 +30,9 @@ Thumbs.db
 
 # 覆盖测试文件（可选）
 coverage.out
+
+.env
+
+config/dev.yaml
+config/prod.yaml
+config/test.yaml
