@@ -16,7 +16,7 @@ func InitDB() *gorm.DB {
 		dsn string `yaml:"dsn"`
 	}
 	var cfg = Config{
-		dsn: "root:root@tcp(localhost:3306)/leaforum",
+		dsn: "root:root@tcp(localhost:3306)/inspora",
 	}
 	err := viper.UnmarshalKey("mysql", &cfg)
 	if err != nil {

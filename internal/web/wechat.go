@@ -23,7 +23,7 @@ func (h *WechatHandler) RegisterRoutes(r *gin.Engine) {
 
 func (h *WechatHandler) AuthURL(c *gin.Context) {
 	// 获取微信授权链接
-	url, err := h.svc.AuthURL(c)
+	url, err := h.svc.AuthURL(c.Request.Context()) // 使用Request.Context()而不是直接传入c
 	if err != nil {
 		c.JSON(500, gin.H{"error": "获取微信授权链接失败"})
 		return

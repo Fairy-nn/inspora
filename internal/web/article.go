@@ -1,6 +1,9 @@
 package web
 
 import (
+	"net/http"
+
+	"github.com/Fairy-nn/inspora/internal/domain"
 	"github.com/Fairy-nn/inspora/internal/service"
 	"github.com/gin-gonic/gin"
 )
@@ -24,5 +27,41 @@ func (a *ArticleHandler) RegisterRoutes(r *gin.Engine) {
 }
 
 func (a *ArticleHandler) Edit(c *gin.Context) {
+	type Request struct {
+		Title string `json:"title"`
+		Content string `json:"content"`
+	}
+	var req Request
+	if err:=c.Bind(&req);err!=nil{
+		c.JSON(400, gin.H{"error": "invalid request"})
+		return
+	}
+	// 文章标题和内容不能为空
+	if req.Title==""||req.Content==""{
+		c.JSON(400, gin.H{"error": "title and content are required"})
+		return
+	}
+	// 获取用户ID
+	userID,ok:=c.Get("user_id")
+	if !ok{
+		c.JSON(http.StatusUnauthorized,gin.H{"error":"unauthorized"})
+		return
+	}
+	// 调用服务层保存文章
+	articleID,err:=a.svc.Save(c,domain.Article{
+		Title:   req.Title,
+		Content: req.Content,
+		Author: domain.Author{
+			ID: userID.(int64),
+		},
+	})
 
+	if err!=nil{
+		c.JSON(http.StatusInternalServerError,gin.H{"error":"failed to save article"})
+		return
+	}
+	c.JSON(http.StatusOK,gin.H{
+		"message": "success",
+		"article_id": articleID,
+	})
 }

@@ -157,6 +157,7 @@ func (u *UserHandler) Login(ctx *gin.Context) {
 
 // 登录使用JWT
 func (u *UserHandler) LoginJWT(ctx *gin.Context) {
+	fmt.Println("登录使用JWT")
 	// 定义请求体结构体
 	type LoginReq struct {
 		Email    string `json:"email"`

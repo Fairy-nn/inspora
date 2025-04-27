@@ -16,8 +16,8 @@ type Article struct {
 	ID       int64  `gorm:"primaryKey,autoIncrement"`
 	Title    string `gorm:"type:varchar(1024)"` // 文章标题
 	Content  string `gorm:"type:BLOB"`          // 文章内容
-	AuthorID int64  `gorm:"index"`              // 作者ID
-	Ctime    int64
+	AuthorID int64  `gorm:"index:aid_ctime"`              // 作者ID
+	Ctime    int64	`gorm:"index:aid_ctime"`              // 创建时间
 	Utime    int64
 }
 

@@ -21,22 +21,22 @@ func InitInspora() *gin.Engine {
 		ioc.InitGin,
 		ioc.InitMiddlewares,
 
+		web.NewUserHandler,
 		cache.NewUserCacheV1,
 		dao.NewUserDAO,
 		repository.NewUserRepository,
 		service.NewUserService,
+
 		cache.NewCodeCache,
 		repository.NewCodeRepository,
 		service.NewCodeService,
 
-		ioc.InitOAuth2WechatService,
-		web.NewWechatHandler,
+		// ioc.InitOAuth2WechatService,
+		// web.NewWechatHandler,
 
-		web.NewUserHandler,
-
-		web.NewArticleHandler, 
-		service.NewArticleService, 
-		repository.NewCachedArticleRepository, 
+		web.NewArticleHandler,
+		service.NewArticleService,
+		repository.NewCachedArticleRepository,
 		dao.NewArticleDAO,
 	)
 
