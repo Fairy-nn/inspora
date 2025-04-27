@@ -1,8 +1,9 @@
 package dao
 
-import(
+import (
 	"gorm.io/gorm"
 )
+
 func InitDB(db *gorm.DB) error {
-	return db.AutoMigrate(&User{})
+	return db.AutoMigrate(&User{}, &Article{})
 }

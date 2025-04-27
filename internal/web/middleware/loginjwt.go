@@ -82,7 +82,8 @@ func (b *LoginMiddlewareJWT) Build() gin.HandlerFunc {
 		// 将解析后的token中的claims存入上下文中
 		if claims, ok := parsedToken.Claims.(jwt.MapClaims); ok {
 			fmt.Printf("%+v\n", claims) // DEBUG: 打印claims信息
-
+			// 将用户ID存入上下文中
+			c.Set("userID", claims["id"])
 			c.Set("claims", claims) // 将用户ID存入上下文中
 		}
 	}
