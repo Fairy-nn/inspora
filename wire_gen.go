@@ -33,6 +33,10 @@ func InitInspora() *gin.Engine {
 	userHandler := web.NewUserHandler(userServiceInterface, codeServiceInterface)
 	wechatService := ioc.InitOAuth2WechatService()
 	wechatHandler := web.NewWechatHandler(wechatService)
-	engine := ioc.InitGin(v, userHandler, wechatHandler)
+	articleDaoInterface := dao.NewArticleDAO(db)
+	articleRepository := repository.NewCachedArticleRepository(articleDaoInterface)
+	articleServiceInterface := service.NewArticleService(articleRepository)
+	articleHandler := web.NewArticleHandler(articleServiceInterface)
+	engine := ioc.InitGin(v, userHandler, wechatHandler, articleHandler)
 	return engine
 }

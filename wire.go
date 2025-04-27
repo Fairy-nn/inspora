@@ -33,6 +33,11 @@ func InitInspora() *gin.Engine {
 		web.NewWechatHandler,
 
 		web.NewUserHandler,
+
+		web.NewArticleHandler, 
+		service.NewArticleService, 
+		repository.NewCachedArticleRepository, 
+		dao.NewArticleDAO,
 	)
 
 	return new(gin.Engine)
