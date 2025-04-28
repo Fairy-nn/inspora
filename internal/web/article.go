@@ -28,6 +28,7 @@ func (a *ArticleHandler) RegisterRoutes(r *gin.Engine) {
 
 func (a *ArticleHandler) Edit(c *gin.Context) {
 	type Request struct {
+		ID      int64  `json:"id"`
 		Title   string `json:"title"`
 		Content string `json:"content"`
 	}
@@ -60,7 +61,7 @@ func (a *ArticleHandler) Edit(c *gin.Context) {
 		Title:   req.Title,
 		Content: req.Content,
 		Author: domain.Author{
-			ID: int64(userIDFloat),
+			ID: int64(userIDFloat), 
 		},
 	})
 

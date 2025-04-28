@@ -9,6 +9,7 @@ import (
 
 type ArticleDaoInterface interface {
 	Insert(ctx context.Context, article *Article) (int64, error)
+	Update(ctx context.Context, article *Article) ( error)
 }
 
 // 这是制作库的数据库表结构
@@ -30,11 +31,27 @@ func NewArticleDAO(db *gorm.DB) ArticleDaoInterface {
 		db: db,
 	}
 }
-
+// Insert 插入文章
 func (a *ArticleGORMDAO) Insert(ctx context.Context, article *Article) (int64, error) {
 	now:=time.Now().UnixMilli()
 	article.Ctime = now
 	article.Utime = now
 	err := a.db.WithContext(ctx).Create(&article).Error
 	return article.ID, err
+}
+// Update 更新文章
+func (a *ArticleGORMDAO) Update(ctx context.Context, article *Article) (error) {
+	now := time.Now().UnixMilli()
+	article.Utime = now
+
+	// 使用 GORM 的 Updates 方法来更新文章的字段
+	err := a.db.WithContext(ctx).Model(article).
+	Where("id = ?", article.ID).
+	Updates(map[string]any{
+		"Title":    article.Title,
+		"Content":  article.Content,
+		"utime":  article.Utime,
+	}).Error
+
+	return err
 }
