@@ -25,10 +25,11 @@ func (a *ArticleHandler) RegisterRoutes(r *gin.Engine) {
 	ag := r.Group("/article") // 文章相关路由
 	ag.POST("/edit", a.Edit)  // 创建文章
 }
+
 // Edit 编辑文章
 func (a *ArticleHandler) Edit(c *gin.Context) {
 	type Request struct {
-		ID      int64  `json:"id"`
+		ID      int64  `json:"id"` //文章ID
 		Title   string `json:"title"`
 		Content string `json:"content"`
 	}
@@ -48,21 +49,16 @@ func (a *ArticleHandler) Edit(c *gin.Context) {
 		c.JSON(http.StatusUnauthorized, gin.H{"error": "unauthorized"})
 		return
 	}
-	// 断言为 float64
-	userIDFloat, ok := userID.(float64)
-	if !ok {
-		// 处理类型不正确的情况，可能需要返回错误
-		c.AbortWithStatusJSON(http.StatusInternalServerError, gin.H{"error": "用户 ID 类型错误"})
-		return
-	}
+	userIDfloat, _:= userID.(float64)
 
 	// 调用服务层保存文章
 	articleID, err := a.svc.Save(c, domain.Article{
 		Title:   req.Title,
 		Content: req.Content,
 		Author: domain.Author{
-			ID: int64(userIDFloat), 
+			ID: int64(userIDfloat), //作者ID
 		},
+		ID: req.ID, // 文章ID
 	})
 
 	if err != nil {

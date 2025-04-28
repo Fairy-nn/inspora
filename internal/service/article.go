@@ -26,9 +26,9 @@ func NewArticleService(repo repository.ArticleRepository) ArticleServiceInterfac
 
 // Save 保存文章
 func (a *ArticleService) Save(ctx context.Context, article domain.Article) (int64, error) {
-	// 如果文章的作者ID大于0，则更新文章，否则创建新文章
-	if article.Author.ID > 0 { 
-		return article.Author.ID,a.repo.Update(ctx, article)
+	// 如果文章ID大于0，则更新文章，否则创建新文章
+	if article.ID > 0 {
+		return article.ID, a.repo.Update(ctx, article)
 	}
 
 	return a.repo.Create(ctx, article)

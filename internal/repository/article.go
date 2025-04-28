@@ -32,7 +32,7 @@ func (c *CachedArticleRepository) Create(ctx context.Context, article domain.Art
 // Update 更新文章
 func (c *CachedArticleRepository) Update(ctx context.Context, article domain.Article) error {
 	return c.dao.Update(ctx, &dao.Article{
-		ID:       article.Author.ID,
+		ID:       article.ID,
 		Title:    article.Title,
 		Content:  article.Content,
 		AuthorID: article.Author.ID,
