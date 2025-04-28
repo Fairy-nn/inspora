@@ -25,7 +25,7 @@ func (a *ArticleHandler) RegisterRoutes(r *gin.Engine) {
 	ag := r.Group("/article") // 文章相关路由
 	ag.POST("/edit", a.Edit)  // 创建文章
 }
-
+// Edit 编辑文章
 func (a *ArticleHandler) Edit(c *gin.Context) {
 	type Request struct {
 		ID      int64  `json:"id"`
