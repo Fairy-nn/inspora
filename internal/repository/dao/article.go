@@ -6,11 +6,14 @@ import (
 	"time"
 
 	"gorm.io/gorm"
+	"gorm.io/gorm/clause"
 )
 
 type ArticleDaoInterface interface {
 	Insert(ctx context.Context, article *Article) (int64, error)
 	Update(ctx context.Context, article *Article) error
+	Sync(ctx context.Context, article *Article) (int64, error)
+	Upsert(ctx context.Context, article PublishArticle) error
 }
 
 // 这是制作库的数据库表结构
@@ -31,6 +34,10 @@ func NewArticleDAO(db *gorm.DB) ArticleDaoInterface {
 	return &ArticleGORMDAO{
 		db: db,
 	}
+}
+
+type PublishArticle struct {
+	Article
 }
 
 // Insert 插入文章
@@ -66,4 +73,46 @@ func (a *ArticleGORMDAO) Update(ctx context.Context, article *Article) error {
 	}
 
 	return nil
+}
+
+// Sync 同步文章
+func (a *ArticleGORMDAO) Sync(ctx context.Context, article *Article) (int64, error) {
+
+	var id = article.ID // 文章ID
+	// Transaction 开启一个事务
+	err := a.db.Transaction(func(tx *gorm.DB) error {
+		var err error
+		// txDao 执行的所有数据库操作都会在当前事务的上下文中进行
+		txDao := NewArticleDAO(tx)
+		if id > 0 {
+			// 如果文章ID大于0，则更新文章
+			err = txDao.Update(ctx, article)
+		} else {
+			// 创建新文章
+			id, err = txDao.Insert(ctx, article)
+		}
+		if err != nil { //直接返回该错误，GORM 会自动回滚事务
+			return err
+		}
+		// 为什么还需要 Upsert？
+		// 因为在创建文章时，可能会有其他人同时创建文章，导致 ID 冲突，所以需要 Upsert
+		// Upsert 是一个原子操作，可以避免 ID 冲突的问题
+		err = txDao.Upsert(ctx, PublishArticle{Article: *article})
+		return err
+	})
+	return id, err
+}
+func (a *ArticleGORMDAO) Upsert(ctx context.Context, article PublishArticle) error {
+	now := time.Now().UnixMilli()
+	article.Ctime = now
+	article.Utime = now
+	// Clause is a method to specify the conflict resolution strategy
+	res := a.db.Clauses(clause.OnConflict{
+		DoUpdates: clause.Assignments(map[string]interface{}{
+			"title":      article.Title,
+			"content":    article.Content,
+			"updated_at": article.Utime,
+		}),
+	}).Create(&article)
+	return res.Error
 }

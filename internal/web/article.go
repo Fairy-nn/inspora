@@ -26,13 +26,15 @@ func (a *ArticleHandler) RegisterRoutes(r *gin.Engine) {
 	ag.POST("/edit", a.Edit)  // 创建文章
 }
 
+// 前端的请求体
+type Request struct {
+	ID      int64  `json:"id"` //文章ID
+	Title   string `json:"title"`
+	Content string `json:"content"`
+}
+
 // Edit 编辑文章
 func (a *ArticleHandler) Edit(c *gin.Context) {
-	type Request struct {
-		ID      int64  `json:"id"` //文章ID
-		Title   string `json:"title"`
-		Content string `json:"content"`
-	}
 	var req Request
 	if err := c.Bind(&req); err != nil {
 		c.JSON(400, gin.H{"error": "invalid request"})
@@ -49,7 +51,7 @@ func (a *ArticleHandler) Edit(c *gin.Context) {
 		c.JSON(http.StatusUnauthorized, gin.H{"error": "unauthorized"})
 		return
 	}
-	userIDfloat, _:= userID.(float64)
+	userIDfloat, _ := userID.(float64)
 
 	// 调用服务层保存文章
 	articleID, err := a.svc.Save(c, domain.Article{
@@ -65,6 +67,47 @@ func (a *ArticleHandler) Edit(c *gin.Context) {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to save article"})
 		return
 	}
+	c.JSON(http.StatusOK, gin.H{
+		"message":    "success",
+		"article_id": articleID,
+	})
+}
+
+// Publish 发布文章
+func (a *ArticleHandler) Publish(c *gin.Context) {
+	// 请求体结构体
+	var req Request
+	if err := c.Bind(&req); err != nil {
+		c.JSON(400, gin.H{"error": "invalid request"})
+		return
+	}
+	// 文章标题和内容不能为空
+	if req.Title == "" || req.Content == "" {
+		c.JSON(400, gin.H{"error": "title and content are required"})
+		return
+	}
+	// 获取用户ID
+	userID, ok := c.Get("userID")
+	if !ok {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "unauthorized"})
+		return
+	}
+	userIDfloat, _ := userID.(float64)
+	// 调用服务层保存文章
+	articleID, err := a.svc.Publish(c, domain.Article{
+		ID: 	req.ID,
+		Title:   req.Title,
+		Content: req.Content,
+		Author: domain.Author{
+			ID: int64(userIDfloat), //作者ID
+		},
+	})
+	// 保存失败
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to save article"})
+		return
+	}
+	// 保存成功
 	c.JSON(http.StatusOK, gin.H{
 		"message":    "success",
 		"article_id": articleID,

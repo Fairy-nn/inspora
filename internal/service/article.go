@@ -10,6 +10,7 @@ import (
 // ArticleServiceInterface 文章服务接口
 type ArticleServiceInterface interface {
 	Save(ctx context.Context, article domain.Article) (int64, error)
+	Publish(ctx context.Context, article domain.Article) (int64, error)
 }
 
 // ArticleService 文章服务实现
@@ -32,4 +33,9 @@ func (a *ArticleService) Save(ctx context.Context, article domain.Article) (int6
 	}
 
 	return a.repo.Create(ctx, article)
+}
+
+// Publish 发布文章
+func (a *ArticleService) Publish(ctx context.Context, article domain.Article) (int64, error) {
+	return a.repo.Sync(ctx, article)
 }
