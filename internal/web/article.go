@@ -22,9 +22,10 @@ func NewArticleHandler(svc service.ArticleServiceInterface) *ArticleHandler {
 
 // RegisterRoutes 注册路由
 func (a *ArticleHandler) RegisterRoutes(r *gin.Engine) {
-	ag := r.Group("/article")      // 文章相关路由
-	ag.POST("/edit", a.Edit)       // 创建文章
-	ag.POST("/publish", a.Publish) // 发布文章
+	ag := r.Group("/article")        // 文章相关路由
+	ag.POST("/edit", a.Edit)         // 创建文章
+	ag.POST("/publish", a.Publish)   // 发布文章
+	ag.POST("/withdraw", a.Withdraw) // 撤回文章
 }
 
 // 前端的请求体
@@ -32,6 +33,49 @@ type Request struct {
 	ID      int64  `json:"id"` //文章ID
 	Title   string `json:"title"`
 	Content string `json:"content"`
+}
+
+// Withdraw 撤回文章
+func (a *ArticleHandler) Withdraw(c *gin.Context) {
+	// 请求体结构体
+	type Req struct {
+		ID int64 `json:"id"` // 文章ID
+	}
+	var req Req
+	if err := c.Bind(&req); err != nil {
+		c.JSON(400, gin.H{"error": "invalid request"})
+		return
+	}
+
+	// 文章ID不能为空
+	if req.ID == 0 {
+		c.JSON(400, gin.H{"error": "id is required"})
+		return
+	}
+
+	// 获取用户ID
+	userID, ok := c.Get("userID")
+	if !ok {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "unauthorized"})
+		return
+	}
+
+	// 调用服务层撤回文章方法
+	err := a.svc.Withdraw(c, domain.Article{
+		ID: req.ID,
+		Author: domain.Author{
+			ID: int64(userID.(float64)), // 作者ID
+		},
+	})
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to withdraw article"})
+		return
+	}
+	c.JSON(http.StatusOK, gin.H{
+		"message":    "success",
+		"action":     "withdraw",
+		"article_id": req.ID,
+	})
 }
 
 // Edit 编辑文章

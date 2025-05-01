@@ -5,6 +5,7 @@ type Article struct {
 	Title   string
 	Content string
 	Author  Author
+	Status  ArticleStatus // 文章状态
 }
 
 type Author struct {
@@ -34,6 +35,7 @@ func (a ArticleStatus) Valid() bool {
 	}
 	return false
 }
+
 // 将状态转换为字符串
 func (a ArticleStatus) String() string {
 	switch a {

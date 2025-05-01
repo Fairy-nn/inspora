@@ -14,6 +14,7 @@ type ArticleDaoInterface interface {
 	Update(ctx context.Context, article *Article) error
 	Sync(ctx context.Context, article *Article) (int64, error)
 	Upsert(ctx context.Context, article PublishArticle) error
+	SyncStatus(ctx context.Context, articleID, authorID int64, status uint8) error
 }
 
 // 这是制作库的数据库表结构
@@ -24,6 +25,7 @@ type Article struct {
 	AuthorID int64  `gorm:"index:aid_ctime" json:"author_id"`   // 作者ID
 	Ctime    int64  `gorm:"index:aid_ctime" json:"ctime"`       // 创建时间
 	Utime    int64  `json:"utime"`
+	Status   uint8  `json:"status"` // 文章状态
 }
 
 type ArticleGORMDAO struct {
@@ -62,6 +64,7 @@ func (a *ArticleGORMDAO) Update(ctx context.Context, article *Article) error {
 			"Title":   article.Title,
 			"Content": article.Content,
 			"Utime":   article.Utime,
+			"Status":  uint8(article.Status), // 文章状态
 		})
 	if res.Error != nil {
 		return res.Error
@@ -117,12 +120,41 @@ func (a *ArticleGORMDAO) Upsert(ctx context.Context, article PublishArticle) err
 	// 使用 GORM 的 Clauses 方法来执行 UPSERT 操作
 	res := a.db.Clauses(clause.OnConflict{
 		DoUpdates: clause.Assignments(map[string]interface{}{
-			"title":      article.Title,
-			"content":    article.Content,
-			"utime": article.Utime,
+			"title":   article.Title,
+			"content": article.Content,
+			"utime":   article.Utime,
+			"status":  article.Status,
 		}),
 	}).Create(&article)
 	// MYSQL最终的语句是 INSERT INTO article (title, content, ctime, updated_at) VALUES (?, ?, ?, ?) ON DUPLICATE KEY UPDATE title = ?, content = ?, updated_at = ?
 
 	return res.Error
+}
+
+// SyncStatus 同步文章状态
+func (a *ArticleGORMDAO) SyncStatus(ctx context.Context, articleID, authorID int64, status uint8) error {
+	now := time.Now().UnixMilli() // 获取当前时间戳
+
+	// 开启一个事务
+	return a.db.Transaction(func(tx *gorm.DB) error {
+		// 更新Article表中的文章信息
+		res := tx.WithContext(ctx).Model(&Article{}).Where("id = ? AND author_id = ?", articleID, authorID).Updates(
+			map[string]any{
+				"status": status,
+				"utime":  now,
+			})
+		if res.Error != nil {
+			return res.Error
+		}
+		if res.RowsAffected == 0 {
+			return fmt.Errorf("没有更新,article id: %d,author id :%d", articleID, authorID)
+		}
+
+		// 更新线上表中的文章信息
+		return tx.WithContext(ctx).Model(&PublishArticle{}).Where("id = ? AND author_id = ?", articleID, authorID).Updates(
+			map[string]any{
+				"status": status,
+				"utime":  now,
+			}).Error
+	})
 }
