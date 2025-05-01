@@ -22,8 +22,9 @@ func NewArticleHandler(svc service.ArticleServiceInterface) *ArticleHandler {
 
 // RegisterRoutes 注册路由
 func (a *ArticleHandler) RegisterRoutes(r *gin.Engine) {
-	ag := r.Group("/article") // 文章相关路由
-	ag.POST("/edit", a.Edit)  // 创建文章
+	ag := r.Group("/article")      // 文章相关路由
+	ag.POST("/edit", a.Edit)       // 创建文章
+	ag.POST("/publish", a.Publish) // 发布文章
 }
 
 // 前端的请求体
@@ -95,7 +96,7 @@ func (a *ArticleHandler) Publish(c *gin.Context) {
 	userIDfloat, _ := userID.(float64)
 	// 调用服务层保存文章
 	articleID, err := a.svc.Publish(c, domain.Article{
-		ID: 	req.ID,
+		ID:      req.ID,
 		Title:   req.Title,
 		Content: req.Content,
 		Author: domain.Author{

@@ -36,6 +36,7 @@ func NewArticleDAO(db *gorm.DB) ArticleDaoInterface {
 	}
 }
 
+// 这个代表线上表（同库不同表）
 type PublishArticle struct {
 	Article
 }
@@ -77,13 +78,17 @@ func (a *ArticleGORMDAO) Update(ctx context.Context, article *Article) error {
 
 // Sync 同步文章
 func (a *ArticleGORMDAO) Sync(ctx context.Context, article *Article) (int64, error) {
-
 	var id = article.ID // 文章ID
+
 	// Transaction 开启一个事务
-	err := a.db.Transaction(func(tx *gorm.DB) error {
-		var err error
+	// 确保保存到线上库和制作库同时成功或失败
+	// 闭包，GORM帮助我们管理事务的开始和提交，包括回滚、错误处理等
+	var err error
+	err = a.db.Transaction(func(tx *gorm.DB) error {
+		// 先操作制作库，再操作线上库
 		// txDao 执行的所有数据库操作都会在当前事务的上下文中进行
 		txDao := NewArticleDAO(tx)
+
 		if id > 0 {
 			// 如果文章ID大于0，则更新文章
 			err = txDao.Update(ctx, article)
@@ -91,28 +96,33 @@ func (a *ArticleGORMDAO) Sync(ctx context.Context, article *Article) (int64, err
 			// 创建新文章
 			id, err = txDao.Insert(ctx, article)
 		}
+
 		if err != nil { //直接返回该错误，GORM 会自动回滚事务
 			return err
 		}
-		// 为什么还需要 Upsert？
-		// 因为在创建文章时，可能会有其他人同时创建文章，导致 ID 冲突，所以需要 Upsert
-		// Upsert 是一个原子操作，可以避免 ID 冲突的问题
+
+		// 同步到线上库
 		err = txDao.Upsert(ctx, PublishArticle{Article: *article})
 		return err
 	})
 	return id, err
 }
+
+// Upsert 插入或更新文章
 func (a *ArticleGORMDAO) Upsert(ctx context.Context, article PublishArticle) error {
 	now := time.Now().UnixMilli()
 	article.Ctime = now
 	article.Utime = now
-	// Clause is a method to specify the conflict resolution strategy
+
+	// 使用 GORM 的 Clauses 方法来执行 UPSERT 操作
 	res := a.db.Clauses(clause.OnConflict{
 		DoUpdates: clause.Assignments(map[string]interface{}{
 			"title":      article.Title,
 			"content":    article.Content,
-			"updated_at": article.Utime,
+			"utime": article.Utime,
 		}),
 	}).Create(&article)
+	// MYSQL最终的语句是 INSERT INTO article (title, content, ctime, updated_at) VALUES (?, ?, ?, ?) ON DUPLICATE KEY UPDATE title = ?, content = ?, updated_at = ?
+
 	return res.Error
 }
