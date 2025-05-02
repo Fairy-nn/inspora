@@ -41,6 +41,14 @@ func (c *CachedArticleRepository) SyncStatus(ctx context.Context, articleID, aut
 
 // Create 创建文章
 func (c *CachedArticleRepository) Create(ctx context.Context, article domain.Article) (int64, error) {
+	// 删除缓存
+	defer func() {
+		err:=c.cache.DelFirstPage(ctx, article.Author.ID)
+		if err != nil {
+			fmt.Println("删除缓存失败", err)
+		}
+	}()
+	
 	return c.dao.Insert(ctx, &dao.Article{
 		Title:    article.Title,
 		Content:  article.Content,
@@ -51,6 +59,13 @@ func (c *CachedArticleRepository) Create(ctx context.Context, article domain.Art
 
 // Update 更新文章
 func (c *CachedArticleRepository) Update(ctx context.Context, article domain.Article) error {
+	defer func() {
+		err := c.cache.DelFirstPage(ctx, article.Author.ID)
+		if err != nil {
+			fmt.Println("删除缓存失败", err)
+		}
+	}()
+
 	return c.dao.Update(ctx, &dao.Article{
 		ID:       article.ID,
 		Title:    article.Title,
@@ -62,13 +77,28 @@ func (c *CachedArticleRepository) Update(ctx context.Context, article domain.Art
 
 // Sync 同步文章
 func (c *CachedArticleRepository) Sync(ctx context.Context, article domain.Article) (int64, error) {
-	return c.dao.Sync(ctx, &dao.Article{
+	id, err := c.dao.Sync(ctx, &dao.Article{
 		ID:       article.ID,
 		Title:    article.Title,
 		Content:  article.Content,
 		AuthorID: article.Author.ID,
 		Status:   article.Status.ToUint8(),
 	})
+	
+	// 文章发布成功后，删除缓存
+	if err == nil {
+		// 删除缓存
+		err := c.cache.DelFirstPage(ctx, article.Author.ID)
+		if err != nil {
+			fmt.Println("删除缓存失败", err)
+		}
+
+		err =c.cache.SetPub(ctx,article)
+		if err != nil {
+			fmt.Println("设置公共缓存失败", err)
+		}
+	} 
+	return id, err
 }
 
 // List 获取文章列表
