@@ -24,7 +24,6 @@ func InitInspora() *gin.Engine {
 		web.NewUserHandler,
 		cache.NewUserCacheV1,
 		dao.NewUserDAO,
-		repository.NewUserRepository,
 		service.NewUserService,
 
 		cache.NewCodeCache,
@@ -35,7 +34,7 @@ func InitInspora() *gin.Engine {
 
 		// ioc.InitOAuth2WechatService,
 		// web.NewWechatHandler,
-
+		repository.NewUserRepository,
 		web.NewArticleHandler,
 		service.NewArticleService,
 		repository.NewCachedArticleRepository,

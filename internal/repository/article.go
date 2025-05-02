@@ -23,15 +23,18 @@ type ArticleRepository interface {
 	List(ctx context.Context, userID int64, limit int, offset int) ([]domain.Article, error)
 	// FindById 根据ID获取文章
 	FindById(ctx context.Context, id, uid int64) (domain.Article, error)
+	// FindPublicArticleById 根据ID获取公开文章
+	FindPublicArticleById(ctx context.Context, id int64) (domain.Article, error)
 }
 
 type CachedArticleRepository struct {
-	dao   dao.ArticleDaoInterface
-	cache cache.ArticleCache // 文章缓存
+	dao      dao.ArticleDaoInterface
+	cache    cache.ArticleCache      // 文章缓存
+	userRepo UserRepositoryInterface // 用户仓库
 }
 
-func NewCachedArticleRepository(dao dao.ArticleDaoInterface, cache cache.ArticleCache) ArticleRepository {
-	return &CachedArticleRepository{dao: dao, cache: cache}
+func NewCachedArticleRepository(dao dao.ArticleDaoInterface, cache cache.ArticleCache, repo UserRepositoryInterface) ArticleRepository {
+	return &CachedArticleRepository{dao: dao, cache: cache, userRepo: repo}
 }
 
 // SyncStatus 同步文章状态
@@ -43,12 +46,12 @@ func (c *CachedArticleRepository) SyncStatus(ctx context.Context, articleID, aut
 func (c *CachedArticleRepository) Create(ctx context.Context, article domain.Article) (int64, error) {
 	// 删除缓存
 	defer func() {
-		err:=c.cache.DelFirstPage(ctx, article.Author.ID)
+		err := c.cache.DelFirstPage(ctx, article.Author.ID)
 		if err != nil {
 			fmt.Println("删除缓存失败", err)
 		}
 	}()
-	
+
 	return c.dao.Insert(ctx, &dao.Article{
 		Title:    article.Title,
 		Content:  article.Content,
@@ -84,7 +87,7 @@ func (c *CachedArticleRepository) Sync(ctx context.Context, article domain.Artic
 		AuthorID: article.Author.ID,
 		Status:   article.Status.ToUint8(),
 	})
-	
+
 	// 文章发布成功后，删除缓存
 	if err == nil {
 		// 删除缓存
@@ -93,11 +96,11 @@ func (c *CachedArticleRepository) Sync(ctx context.Context, article domain.Artic
 			fmt.Println("删除缓存失败", err)
 		}
 
-		err =c.cache.SetPub(ctx,article)
+		err = c.cache.SetPub(ctx, article)
 		if err != nil {
 			fmt.Println("设置公共缓存失败", err)
 		}
-	} 
+	}
 	return id, err
 }
 
@@ -120,7 +123,7 @@ func (c *CachedArticleRepository) List(ctx context.Context, userID int64, limit 
 			}()
 		}
 	}
-	
+
 	// 从数据库中获取文章列表
 	res, err := c.dao.FindByAuthor(ctx, userID, offset, limit)
 	if err != nil {
@@ -174,11 +177,11 @@ func (c *CachedArticleRepository) preCache(ctx context.Context, articles []domai
 // FindById 根据ID获取文章
 func (c *CachedArticleRepository) FindById(ctx context.Context, id, uid int64) (domain.Article, error) {
 	article, err := c.dao.FindById(ctx, id, uid)
- 	if err != nil {
- 		return domain.Article{}, err
- 	}
- 	return domain.Article{
-		ID:	  article.ID,
+	if err != nil {
+		return domain.Article{}, err
+	}
+	return domain.Article{
+		ID:      article.ID,
 		Title:   article.Title,
 		Content: article.Content,
 		Author:  domain.Author{ID: article.AuthorID},
@@ -186,4 +189,46 @@ func (c *CachedArticleRepository) FindById(ctx context.Context, id, uid int64) (
 		Ctime:   time.UnixMilli(article.Ctime),
 		Utime:   time.UnixMilli(article.Utime),
 	}, nil
+}
+
+// FindPublicArticleById 根据ID获取公开文章
+func (c *CachedArticleRepository) FindPublicArticleById(ctx context.Context, id int64) (domain.Article, error) {
+	// 先从缓存中获取文章
+	cachedArticle, err := c.cache.GetPub(ctx, id)
+	if err == nil && cachedArticle.ID > 0 {
+		return cachedArticle, nil
+	}
+
+	// 如果缓存中没有，则从数据库中获取
+	article, err := c.dao.FindPublicArticleById(ctx, id)
+	if err != nil {
+		return domain.Article{}, err
+	}
+
+	// 根据文章的作者ID，从用户仓库中获取作者信息
+	user, err := c.userRepo.GetByID(ctx, article.AuthorID)
+	if err != nil {
+		return domain.Article{}, err
+	}
+
+	// 组合成domain.Article对象
+	res := domain.Article{
+		ID:      article.ID,
+		Title:   article.Title,
+		Content: article.Content,
+		Author:  domain.Author{ID: user.ID, Name: user.Name},
+		Status:  domain.ArticleStatus(article.Status),
+		Ctime:   time.UnixMilli(article.Ctime),
+		Utime:   time.UnixMilli(article.Utime),
+	}
+
+	// 开启一个异步将文章信息存入缓存
+	go func() {
+		err := c.cache.SetPub(ctx, res)
+		if err != nil {
+			fmt.Println("设置公共缓存失败", err)
+		}
+	}()
+
+	return res, nil
 }

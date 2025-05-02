@@ -21,6 +21,8 @@ type ArticleCache interface {
 	DelFirstPage(ctx context.Context, uid int64) error
 	// SetPub 设置发布文章的缓存
 	SetPub(ctx context.Context, article domain.Article) error
+	// GetPub 获取发布文章的缓存
+	GetPub(ctx context.Context, id int64) (domain.Article, error)
 }
 
 type RedisArticleCache struct {
@@ -106,4 +108,24 @@ func (a *RedisArticleCache) SetPub(ctx context.Context, article domain.Article) 
 
 	// 设置缓存，key为文章ID，值为序列化后的文章对象，过期时间为15秒
 	return a.client.Set(ctx, a.KeyArticlePub(article.ID), data, time.Second*15).Err()
+}
+
+// GetPub 获取发布文章的缓存
+func (a *RedisArticleCache) GetPub(ctx context.Context, id int64) (domain.Article, error) {
+	// 根据文章 ID 生成的key从 Redis 中获取缓存数据
+	data, err := a.client.Get(ctx, a.KeyArticlePub(id)).Result()
+	if err != nil {
+		if err == redis.Nil {
+			return domain.Article{}, nil
+		}
+		return domain.Article{}, err
+	}
+
+	// 存储反序列化数据
+	var article domain.Article
+	if err := json.Unmarshal([]byte(data), &article); err != nil {
+		return domain.Article{}, err
+	}
+
+	return article, nil
 }

@@ -29,6 +29,7 @@ func (a *ArticleHandler) RegisterRoutes(r *gin.Engine) {
 	ag.POST("/withdraw", a.Withdraw) // 撤回文章
 	ag.POST("/list", a.List)         // 文章列表
 	ag.GET("/detail/:id", a.Detail)  // 文章详情
+	ag.GET("/pub/:id",a.PubDetail) // 发布文章详情
 }
 
 // 前端的请求体
@@ -279,4 +280,34 @@ func (a *ArticleHandler) Detail(c *gin.Context) {
 		"article_id": id,
 		"article":    toArticleVO(article),
 	})
+}
+
+// PubDetail 发布文章详情
+func (a *ArticleHandler) PubDetail(c *gin.Context) {
+	idstr := c.Param("id")
+ 
+ 	id, err := strconv.ParseInt(idstr, 10, 64)
+ 	if err != nil {
+ 		c.JSON(400, gin.H{"error": "文章ID不合法"})
+ 		return
+ 	}
+ 
+ 	if id == 0 {
+ 		c.JSON(400, gin.H{"error": "需要传入文章ID"})
+ 		return
+ 	}
+ 
+ 	article, err := a.svc.FindPublicArticleById(c, id)
+ 	if err != nil {
+ 		if err.Error() == "record not found" {
+ 			c.JSON(404, gin.H{"error": "文章不存在"})
+ 			return
+ 		}
+ 		c.JSON(500, gin.H{"error": "获取文章失败"})
+ 		return
+ 	}
+ 
+ 	c.JSON(200, gin.H{
+ 		"article": toArticleVO(article),
+ 	})
 }

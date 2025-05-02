@@ -4,6 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"errors"
+	"fmt"
 	"log"
 	"sync"
 
@@ -61,6 +62,7 @@ var mutex sync.Mutex
 
 // GetByID 根据用户ID获取用户信息
 func (r *UserRepository) GetByID(ctx context.Context, id int64) (domain.User, error) {
+	fmt.Println("GetByID", id) // DEBUG: 打印获取用户信息的提示
 	user, err := r.cache.Get(ctx, id)
 	if err == nil { // 如果缓存中存在用户信息，直接返回
 		return user, nil
