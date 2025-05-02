@@ -21,6 +21,8 @@ type ArticleRepository interface {
 	SyncStatus(ctx context.Context, articleID, authorID int64, status domain.ArticleStatus) error
 	// List 获取文章列表
 	List(ctx context.Context, userID int64, limit int, offset int) ([]domain.Article, error)
+	// FindById 根据ID获取文章
+	FindById(ctx context.Context, id, uid int64) (domain.Article, error)
 }
 
 type CachedArticleRepository struct {
@@ -137,4 +139,21 @@ func (c *CachedArticleRepository) preCache(ctx context.Context, articles []domai
 			fmt.Println("预缓存失败", err)
 		}
 	}
+}
+
+// FindById 根据ID获取文章
+func (c *CachedArticleRepository) FindById(ctx context.Context, id, uid int64) (domain.Article, error) {
+	article, err := c.dao.FindById(ctx, id, uid)
+ 	if err != nil {
+ 		return domain.Article{}, err
+ 	}
+ 	return domain.Article{
+		ID:	  article.ID,
+		Title:   article.Title,
+		Content: article.Content,
+		Author:  domain.Author{ID: article.AuthorID},
+		Status:  domain.ArticleStatus(article.Status),
+		Ctime:   time.UnixMilli(article.Ctime),
+		Utime:   time.UnixMilli(article.Utime),
+	}, nil
 }

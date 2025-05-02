@@ -13,7 +13,7 @@ type ArticleServiceInterface interface {
 	Publish(ctx context.Context, article domain.Article) (int64, error)
 	Withdraw(ctx context.Context, article domain.Article) error
 	List(ctx context.Context, userID int64, limit int, offset int) ([]domain.Article, error)
-	
+	FindById(ctx context.Context, id, uid int64) (domain.Article, error)
 }
 
 // ArticleService 文章服务实现
@@ -27,7 +27,6 @@ func NewArticleService(repo repository.ArticleRepository) ArticleServiceInterfac
 		repo: repo,
 	}
 }
-
 
 // Save 保存文章
 func (a *ArticleService) Save(ctx context.Context, article domain.Article) (int64, error) {
@@ -59,4 +58,9 @@ func (a *ArticleService) Withdraw(ctx context.Context, article domain.Article) e
 // List 获取文章列表
 func (a *ArticleService) List(ctx context.Context, userID int64, limit int, offset int) ([]domain.Article, error) {
 	return a.repo.List(ctx, userID, limit, offset)
+}
+
+// FindById 根据ID获取文章
+func (a *ArticleService) FindById(ctx context.Context, id, uid int64) (domain.Article, error) {
+	return a.repo.FindById(ctx, id, uid)
 }

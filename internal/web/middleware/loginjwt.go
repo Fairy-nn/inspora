@@ -28,14 +28,14 @@ func (b *LoginMiddlewareJWT) IgnorePaths(paths ...string) *LoginMiddlewareJWT {
 
 // loginMiddleware 中间件函数
 func (b *LoginMiddlewareJWT) Build() gin.HandlerFunc {
-	cfg := Config{ 
+	cfg := Config{
 		Secret: "secret", // 默认值
 	}
 	err := viper.UnmarshalKey("jwt", &cfg) // 从配置文件中读取密钥
 	if err != nil {
 		return nil
 	}
-//	tokenString, err := jwt.NewWithClaims(jwt.SigningMethodHS256, jwt.MapClaims{}).SignedString([]byte(cfg.Secret))
+	//	tokenString, err := jwt.NewWithClaims(jwt.SigningMethodHS256, jwt.MapClaims{}).SignedString([]byte(cfg.Secret))
 
 	return func(c *gin.Context) {
 		// 获取请求的路径
@@ -83,6 +83,7 @@ func (b *LoginMiddlewareJWT) Build() gin.HandlerFunc {
 		if claims, ok := parsedToken.Claims.(jwt.MapClaims); ok {
 			fmt.Printf("%+v\n", claims) // DEBUG: 打印claims信息
 			// 将用户ID存入上下文中
+			claims["id"] = int64(claims["id"].(float64)) // 将用户ID转换为int64类型
 			c.Set("userID", claims["id"])
 			c.Set("claims", claims) // 将用户ID存入上下文中
 		}

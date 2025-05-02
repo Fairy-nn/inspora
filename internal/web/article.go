@@ -2,6 +2,7 @@ package web
 
 import (
 	"net/http"
+	"strconv"
 
 	"github.com/Fairy-nn/inspora/internal/domain"
 	"github.com/Fairy-nn/inspora/internal/service"
@@ -27,6 +28,7 @@ func (a *ArticleHandler) RegisterRoutes(r *gin.Engine) {
 	ag.POST("/publish", a.Publish)   // 发布文章
 	ag.POST("/withdraw", a.Withdraw) // 撤回文章
 	ag.POST("/list", a.List)         // 文章列表
+	ag.GET("/detail/:id", a.Detail)  // 文章详情
 }
 
 // 前端的请求体
@@ -113,14 +115,19 @@ func (a *ArticleHandler) Publish(c *gin.Context) {
 		c.JSON(http.StatusUnauthorized, gin.H{"error": "unauthorized"})
 		return
 	}
-	userIDfloat, _ := userID.(float64)
+	// 检查 userID 是否为 int64 类型
+	userIDInt64, ok := userID.(int64)
+	if !ok {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "Unauthorized: Invalid user ID type"})
+		return
+	}
 	// 调用服务层保存文章
 	articleID, err := a.svc.Publish(c, domain.Article{
 		ID:      req.ID,
 		Title:   req.Title,
 		Content: req.Content,
 		Author: domain.Author{
-			ID: int64(userIDfloat), //作者ID
+			ID: userIDInt64, //作者ID
 		},
 	})
 	// 保存失败
@@ -212,7 +219,7 @@ func (a *ArticleHandler) List(c *gin.Context) {
 
 	// 返回文章列表
 	c.JSON(http.StatusOK, gin.H{
-		"message":   "success",
+		"message": "success",
 		//"articles":  articleVOs,
 		"total":     len(articleVOs),
 		"page":      req.Offset / req.Limit,
@@ -233,4 +240,43 @@ func toArticleVO(article domain.Article) ArticleV0 {
 		Ctime:      article.Ctime.UnixMilli(),
 		Utime:      article.Utime.UnixMilli(),
 	}
+}
+
+// Detail 文章详情
+func (a *ArticleHandler) Detail(c *gin.Context) {
+	// 获取文章ID
+	idstr := c.Param("id")
+
+	id, err := strconv.ParseInt(idstr, 10, 64)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "文章ID不合法"})
+		return
+	}
+	if id == 0 {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "需要传入文章ID"})
+		return
+	}
+
+	userID, ok := c.Get("userID")
+	if !ok {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "未登录"})
+		return
+	}
+
+	// 调用服务层获取文章详情
+	article, err := a.svc.FindById(c, id, userID.(int64))
+	if err != nil {
+		if err.Error() == "record not found" {
+			c.JSON(http.StatusNotFound, gin.H{"error": "文章不存在"})
+		} else {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "获取文章失败"})
+		}
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"message":    "success",
+		"article_id": id,
+		"article":    toArticleVO(article),
+	})
 }
