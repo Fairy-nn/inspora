@@ -39,6 +39,12 @@ func InitInspora() *gin.Engine {
 		service.NewArticleService,
 		repository.NewCachedArticleRepository,
 		dao.NewArticleDAO,
+
+		repository.NewInteractionRepository,
+		cache.NewRedisInteractionCache,
+		dao.NewGormInteractionDAO,
+		service.NewInteractionService,
+
 	)
 
 	return new(gin.Engine)

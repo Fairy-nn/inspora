@@ -35,7 +35,11 @@ func InitInspora() *gin.Engine {
 	articleCache := cache.NewRedisArticleCache(cmdable)
 	articleRepository := repository.NewCachedArticleRepository(articleDaoInterface, articleCache, userRepositoryInterface)
 	articleServiceInterface := service.NewArticleService(articleRepository)
-	articleHandler := web.NewArticleHandler(articleServiceInterface)
+	interactionDaoInterface := dao.NewGormInteractionDAO(db)
+	interactionCacheInterface := cache.NewRedisInteractionCache(cmdable)
+	interactionRepositoryInterface := repository.NewInteractionRepository(interactionDaoInterface, interactionCacheInterface)
+	interactionServiceInterface := service.NewInteractionService(interactionRepositoryInterface)
+	articleHandler := web.NewArticleHandler(articleServiceInterface, interactionServiceInterface)
 	engine := ioc.InitGin(v, userHandler, articleHandler)
 	return engine
 }

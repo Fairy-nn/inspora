@@ -67,6 +67,11 @@ func (c *CachedArticleRepository) Update(ctx context.Context, article domain.Art
 		if err != nil {
 			fmt.Println("删除缓存失败", err)
 		}
+
+		err = c.cache.SetPub(ctx, article)
+		if err != nil {
+			fmt.Println("设置公共缓存失败", err)
+		}
 	}()
 
 	return c.dao.Update(ctx, &dao.Article{
@@ -96,7 +101,7 @@ func (c *CachedArticleRepository) Sync(ctx context.Context, article domain.Artic
 			fmt.Println("删除缓存失败", err)
 		}
 
-		err = c.cache.SetPub(ctx, article)
+		err = c.cache.SetPub(ctx, article) // 异步设置公共缓存
 		if err != nil {
 			fmt.Println("设置公共缓存失败", err)
 		}

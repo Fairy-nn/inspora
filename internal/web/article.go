@@ -1,23 +1,32 @@
 package web
 
 import (
+	"errors"
+	"fmt"
 	"net/http"
 	"strconv"
 
 	"github.com/Fairy-nn/inspora/internal/domain"
 	"github.com/Fairy-nn/inspora/internal/service"
 	"github.com/gin-gonic/gin"
+	"golang.org/x/sync/errgroup"
+	"gorm.io/gorm"
 )
 
 // ArticleHandler 文章处理器
 type ArticleHandler struct {
-	svc service.ArticleServiceInterface // 文章服务
+	svc            service.ArticleServiceInterface     // 文章服务
+	interactionSvc service.InteractionServiceInterface // 交互服务
+	biz            string                              // 业务线
 }
 
 // NewArticleHandler 创建文章处理器
-func NewArticleHandler(svc service.ArticleServiceInterface) *ArticleHandler {
+func NewArticleHandler(svc service.ArticleServiceInterface,
+	interactionSvc service.InteractionServiceInterface) *ArticleHandler {
 	return &ArticleHandler{
-		svc: svc,
+		svc:            svc,
+		interactionSvc: interactionSvc,
+		biz:            "article",
 	}
 }
 
@@ -28,8 +37,14 @@ func (a *ArticleHandler) RegisterRoutes(r *gin.Engine) {
 	ag.POST("/publish", a.Publish)   // 发布文章
 	ag.POST("/withdraw", a.Withdraw) // 撤回文章
 	ag.POST("/list", a.List)         // 文章列表
-	ag.GET("/detail/:id", a.Detail)  // 文章详情
-	ag.GET("/pub/:id",a.PubDetail) // 发布文章详情
+	ag.GET("/detail/:id", a.Detail)  // 文章详情,用户查看自己所有状态的文章
+
+	pub := r.Group("/pub")       // 公开文章相关路由
+	pub.GET("/:id", a.PubDetail) // 发布文章详情，用户查看所有已公布的文章
+
+	pub.POST("/like", a.Like)       // 点赞文章
+	pub.POST("/collect", a.Collect) // 收藏文章
+
 }
 
 // 前端的请求体
@@ -55,6 +70,7 @@ type ArticleV0 struct {
 	Status     uint8  `json:"status"`      // 文章状态
 	Ctime      int64  `json:"ctime"`       // 创建时间
 	Utime      int64  `json:"utime"`       // 更新时间
+	ViewCount  int64  `json:"view_count"`  // 浏览量
 }
 
 // Edit 编辑文章
@@ -206,7 +222,7 @@ func (a *ArticleHandler) List(c *gin.Context) {
 	}
 
 	// 调用服务层获取文章列表
-	articles, err := a.svc.List(c, int64(userID.(float64)), req.Limit, req.Offset)
+	articles, err := a.svc.List(c, userID.(int64), req.Limit, req.Offset)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to get article list"})
 		return
@@ -220,10 +236,10 @@ func (a *ArticleHandler) List(c *gin.Context) {
 
 	// 返回文章列表
 	c.JSON(http.StatusOK, gin.H{
-		"message": "success",
-		//"articles":  articleVOs,
-		"total":     len(articleVOs),
-		"page":      req.Offset / req.Limit,
+		"message":  "success",
+		"articles": articleVOs,
+		"total":    len(articleVOs),
+		//	"page":      req.Offset / req.Limit,
 		"page_size": req.Limit,
 	})
 }
@@ -284,30 +300,167 @@ func (a *ArticleHandler) Detail(c *gin.Context) {
 
 // PubDetail 发布文章详情
 func (a *ArticleHandler) PubDetail(c *gin.Context) {
+	// 获取文章ID
 	idstr := c.Param("id")
- 
- 	id, err := strconv.ParseInt(idstr, 10, 64)
- 	if err != nil {
- 		c.JSON(400, gin.H{"error": "文章ID不合法"})
- 		return
- 	}
- 
- 	if id == 0 {
- 		c.JSON(400, gin.H{"error": "需要传入文章ID"})
- 		return
- 	}
- 
- 	article, err := a.svc.FindPublicArticleById(c, id)
- 	if err != nil {
- 		if err.Error() == "record not found" {
- 			c.JSON(404, gin.H{"error": "文章不存在"})
- 			return
- 		}
- 		c.JSON(500, gin.H{"error": "获取文章失败"})
- 		return
- 	}
- 
- 	c.JSON(200, gin.H{
- 		"article": toArticleVO(article),
- 	})
+	id, err := strconv.ParseInt(idstr, 10, 64)
+	if err != nil {
+		c.JSON(400, gin.H{"error": "文章ID不合法"})
+		return
+	}
+	if id == 0 {
+		c.JSON(400, gin.H{"error": "需要传入文章ID"})
+		return
+	}
+
+	// 获取用户ID
+	userID, exists := c.Get("userID")
+	if !exists {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "未登录"})
+		return
+	}
+
+	// 创建一个 errgroup 用于并发执行多个任务并处理错误
+	var eg errgroup.Group
+	// 用于存储文章信息
+	var art domain.Article
+	// 存储交互信息
+	var interaction domain.Interaction
+
+	// 并发获取文章信息
+	eg.Go(func() error {
+		var err error
+		art, err = a.svc.FindPublicArticleById(c, id)
+		return err
+	})
+
+	// 并发获取交互信息
+	eg.Go(func() error {
+		// 根据文章 ID 和用户 ID 获取交互信息
+		interaction, err = a.interactionSvc.Get(c, a.biz, id, userID.(int64))
+		fmt.Println("interaction:", interaction)
+		if err != gorm.ErrRecordNotFound {
+			return err
+		}
+		return nil
+	})
+
+	// 等待所有 goroutine 完成
+	err = eg.Wait()
+	// 错误处理部分
+	if err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			c.JSON(http.StatusNotFound, gin.H{"error": "文章不存在"})
+		} else {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "获取文章失败"})
+		}
+		return
+	}
+
+	go func() {
+		err := a.interactionSvc.IncrViewCount(c, a.biz, art.ID)
+		if err != nil {
+			fmt.Printf("增加文章浏览量失败:%v, id:%d\n", err, art.ID)
+		}
+	}()
+
+	
+	c.JSON(200, gin.H{
+		"message":    "success",
+		"article_id": art.ID,
+		"article":    toArticleVO(art),
+		"interaction": gin.H{
+			"like_count":    interaction.LikeCnt,
+			"collect_count": interaction.CollectCnt,
+			"view_count":    interaction.ViewCnt,
+			"liked":         interaction.Liked,
+			"collected":     interaction.Collected,
+		},
+	})
+}
+
+// Like 点赞文章
+func (a *ArticleHandler) Like(c *gin.Context) {
+	type LikeRequest struct {
+		ID   int64 `json:"id"`
+		Like bool  `json:"like"`
+	}
+	var req LikeRequest
+
+	if err := c.Bind(&req); err != nil {
+		c.JSON(400, gin.H{"error": "请求无效"})
+		return
+	}
+
+	if req.ID == 0 {
+		c.JSON(400, gin.H{"error": "文章ID不能为空"})
+		return
+	}
+
+	// 获取用户ID
+	userID, exists := c.Get("userID")
+	if !exists {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "未登录"})
+
+		fmt.Println("用户ID不存在")
+		return
+	}
+
+	var err error
+
+	if req.Like { // true
+		err = a.interactionSvc.Like(c, a.biz, req.ID, userID.(int64))
+	} else { // false
+		err = a.interactionSvc.CancelLike(c, a.biz, req.ID, userID.(int64))
+	}
+
+	if err != nil {
+		c.JSON(500, gin.H{"error": "Failed to like/dislike article"})
+		return
+	}
+
+	c.JSON(200, gin.H{
+		"message": "Success",
+	})
+}
+
+// Collect 收藏文章
+func (a *ArticleHandler) Collect(c *gin.Context) {
+	type CollectRequest struct {
+		ID      int64 `json:"id"`
+		Collect bool  `json:"collect"`
+	}
+
+	var req CollectRequest
+
+	if err := c.Bind(&req); err != nil {
+		c.JSON(400, gin.H{"error": "Invalid request"})
+		return
+	}
+
+	if req.ID == 0 {
+		c.JSON(400, gin.H{"error": "Article ID is required"})
+		return
+	}
+
+	userID, exists := c.Get("userID")
+	if !exists {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "Unauthorized"})
+		return
+	}
+
+	var err error
+	if req.Collect {
+		err = a.interactionSvc.Collect(c, a.biz, req.ID, 0, userID.(int64))
+	} else {
+		err = a.interactionSvc.CancelCollect(c, a.biz, req.ID, 0, userID.(int64))
+	}
+
+	if err != nil {
+		c.JSON(500, gin.H{"error": "Failed to collect/uncollect article"})
+		return
+	}
+
+	c.JSON(200, gin.H{
+		"message": "Success",
+	})
 }
