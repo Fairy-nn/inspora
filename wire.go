@@ -31,6 +31,8 @@ func InitInspora() *gin.Engine {
 		repository.NewCodeRepository,
 		service.NewCodeService,
 
+		cache.NewRedisArticleCache,
+
 		// ioc.InitOAuth2WechatService,
 		// web.NewWechatHandler,
 

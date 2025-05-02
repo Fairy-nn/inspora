@@ -15,6 +15,9 @@ type ArticleDaoInterface interface {
 	Sync(ctx context.Context, article *Article) (int64, error)
 	Upsert(ctx context.Context, article PublishArticle) error
 	SyncStatus(ctx context.Context, articleID, authorID int64, status uint8) error
+	FindByAuthor(ctx context.Context, authorID int64, offset, limit int) ([]Article, error)
+	FindById(ctx context.Context, id, uid int64) (Article, error)
+	FindPublicArticleById(ctx context.Context, id int64) (PublishArticle, error)
 }
 
 // 这是制作库的数据库表结构
@@ -157,4 +160,32 @@ func (a *ArticleGORMDAO) SyncStatus(ctx context.Context, articleID, authorID int
 				"utime":  now,
 			}).Error
 	})
+}
+
+// FindByAuthor 根据作者ID查找文章
+func (a *ArticleGORMDAO) FindByAuthor(ctx context.Context, authorID int64, offset, limit int) ([]Article, error) {	
+	var articles []Article
+	res := a.db.WithContext(ctx).Where("author_id = ?", authorID).Offset(offset).Limit(limit).Order("utime DESC").Find(&articles)
+	if res.Error != nil {
+		return nil, res.Error
+	}
+	
+	return articles, nil
+}
+
+// FindById 根据文章ID查找文章
+func (a *ArticleGORMDAO) FindById(ctx context.Context, id, uid int64) (Article, error) {
+	var article Article
+	res := a.db.WithContext(ctx).Where("id = ? AND author_id = ?", id, uid).First(&article)
+	if res.Error != nil {
+		return Article{}, res.Error
+	}
+	return article, nil
+}
+
+// FindPublicArticleById 根据文章ID查找公开文章
+func (a *ArticleGORMDAO) FindPublicArticleById(ctx context.Context, id int64) (PublishArticle, error) {
+	var pub PublishArticle
+	err := a.db.WithContext(ctx).Where("id = ?", id).First(&pub).Error
+	return pub, err
 }

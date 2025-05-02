@@ -12,6 +12,8 @@ type ArticleServiceInterface interface {
 	Save(ctx context.Context, article domain.Article) (int64, error)
 	Publish(ctx context.Context, article domain.Article) (int64, error)
 	Withdraw(ctx context.Context, article domain.Article) error
+	List(ctx context.Context, userID int64, limit int, offset int) ([]domain.Article, error)
+	
 }
 
 // ArticleService 文章服务实现
@@ -26,11 +28,6 @@ func NewArticleService(repo repository.ArticleRepository) ArticleServiceInterfac
 	}
 }
 
-// Withdraw 撤回文章
-func (a *ArticleService) Withdraw(ctx context.Context, article domain.Article) error {
-	// 把文章撤回了，这里设置成草稿状态
-	return a.repo.SyncStatus(ctx, article.ID, article.Author.ID, domain.ArticleStatusDraft)
-}
 
 // Save 保存文章
 func (a *ArticleService) Save(ctx context.Context, article domain.Article) (int64, error) {
@@ -51,4 +48,15 @@ func (a *ArticleService) Publish(ctx context.Context, article domain.Article) (i
 	article.Status = domain.ArticleStatusPublished
 
 	return a.repo.Sync(ctx, article)
+}
+
+// Withdraw 撤回文章
+func (a *ArticleService) Withdraw(ctx context.Context, article domain.Article) error {
+	// 把文章撤回了，这里设置成草稿状态
+	return a.repo.SyncStatus(ctx, article.ID, article.Author.ID, domain.ArticleStatusDraft)
+}
+
+// List 获取文章列表
+func (a *ArticleService) List(ctx context.Context, userID int64, limit int, offset int) ([]domain.Article, error) {
+	return a.repo.List(ctx, userID, limit, offset)
 }

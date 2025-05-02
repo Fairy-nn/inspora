@@ -1,11 +1,15 @@
 package domain
 
+import "time"
+
 type Article struct {
 	ID      int64
 	Title   string
 	Content string
 	Author  Author
 	Status  ArticleStatus // 文章状态
+	Ctime   time.Time     // 创建时间
+	Utime   time.Time     // 更新时间
 }
 
 type Author struct {
@@ -48,4 +52,15 @@ func (a ArticleStatus) String() string {
 	default:
 		return "未知状态"
 	}
+}
+
+// 生成文章摘要
+func (a *Article) GenerateAbstract() string {
+	// 文章内容转换为 rune 切片,因为中文字符可能会占用多个字节
+	content := []rune(a.Content)
+	// 如果内容长度大于 100 个字符，则截取前 100 个字符并添加省略号
+	if len(content) > 100 {
+		return string(content[:100]) + "..."
+	}
+	return string(content)
 }
