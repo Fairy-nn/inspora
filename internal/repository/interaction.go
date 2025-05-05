@@ -19,6 +19,7 @@ type InteractionRepositoryInterface interface {
 	Liked(ctx context.Context, biz string, bizId, uid int64) (bool, error)
 	Collected(ctx context.Context, biz string, bizId, uid int64) (bool, error)
 	RemoveCollectionItem(ctx context.Context, biz string, bizId, cid, uid int64) error
+	BatchIncrViewCount(ctx context.Context, biz []string, bizIds []int64) error
 }
 
 type InteractionRepository struct {
@@ -158,4 +159,15 @@ func (i *InteractionRepository) toDomain(interEntity dao.InteractionDao) domain.
 		LikeCnt:    interEntity.LikeCount,
 		CollectCnt: interEntity.CollectCount,
 	}
+}
+
+// BatchIncrViewCount 批量增加浏览量
+func (i *InteractionRepository) BatchIncrViewCount(ctx context.Context, biz []string, bizIds []int64) error {
+	// 先批量增加数据库中的浏览量
+	err := i.dao.BatchIncrReadCnt(ctx, biz, bizIds)
+	if err != nil {
+		return err
+	}
+	// 然后批量增加缓存中的浏览量
+	return i.cache.BatchIncrViewCntIfPresent(ctx, biz, bizIds)
 }

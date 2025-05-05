@@ -2,7 +2,8 @@ package service
 
 import (
 	"context"
-
+	"fmt"
+	events "github.com/Fairy-nn/inspora/internal/events/article"
 	"github.com/Fairy-nn/inspora/internal/domain"
 	"github.com/Fairy-nn/inspora/internal/repository"
 )
@@ -14,18 +15,21 @@ type ArticleServiceInterface interface {
 	Withdraw(ctx context.Context, article domain.Article) error
 	List(ctx context.Context, userID int64, limit int, offset int) ([]domain.Article, error)
 	FindById(ctx context.Context, id, uid int64) (domain.Article, error)
-	FindPublicArticleById(ctx context.Context, id int64) (domain.Article, error)
+	FindPublicArticleById(ctx context.Context, id int64, uid int64) (domain.Article, error)
 }
 
 // ArticleService 文章服务实现
 type ArticleService struct {
-	repo repository.ArticleRepository
+	repo     repository.ArticleRepository
+	producer events.Producer
 }
 
 // NewArticleService 创建文章服务
-func NewArticleService(repo repository.ArticleRepository) ArticleServiceInterface {
+func NewArticleService(repo repository.ArticleRepository,
+	producer events.Producer) ArticleServiceInterface {
 	return &ArticleService{
-		repo: repo,
+		repo:     repo,
+		producer: producer,
 	}
 }
 
@@ -67,6 +71,21 @@ func (a *ArticleService) FindById(ctx context.Context, id, uid int64) (domain.Ar
 }
 
 // FindPublicArticleById 根据ID获取公开文章
-func (a *ArticleService) FindPublicArticleById(ctx context.Context, id int64) (domain.Article, error) {
-	return a.repo.FindPublicArticleById(ctx, id)
+func (a *ArticleService) FindPublicArticleById(ctx context.Context, id int64, uid int64) (domain.Article, error) {
+	// return a.repo.FindPublicArticleById(ctx, id)
+	article, err := a.repo.FindPublicArticleById(ctx, id)
+	if err == nil {
+		go func() {
+			// 发送浏览事件到 Kafka
+			err := a.producer.ProducerViewEvent(ctx, events.ViewEvent{
+				Uid: uid,
+				Aid: id,
+			})
+			if err != nil {
+				// 处理错误
+				fmt.Println("Error producing view event:", err)
+			}
+		}()
+	}
+	return article, err
 }

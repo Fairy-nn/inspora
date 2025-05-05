@@ -2,6 +2,7 @@ package dao
 
 import (
 	"context"
+	"fmt"
 	"time"
 
 	"gorm.io/gorm"
@@ -62,6 +63,7 @@ type InteractionDaoInterface interface {
 	InsertCollectionBiz(ctx context.Context, cb UserCollectionBiz) error
 	GetCollectionInfo(ctx context.Context, biz string, bizId, uid int64) (UserCollectionBiz, error)
 	DeleteCollectionInfo(ctx context.Context, biz string, bizId, uid int64) error
+	BatchIncrReadCnt(ctx context.Context, biz []string, bizIds []int64) error
 }
 
 type GormInteractionDAO struct {
@@ -218,6 +220,10 @@ func (i *GormInteractionDAO) GetCollectionInfo(ctx context.Context, biz string, 
 	var collectionInfo UserCollectionBiz
 	// 查询收藏信息
 	err := i.db.WithContext(ctx).Where("biz = ? AND biz_id = ? AND uid = ?", biz, bizId, uid).First(&collectionInfo).Error
+	// 打印生成的 SQL 语句
+	// fmt.Println("SQL:", i.db.ToSQL(func(tx *gorm.DB) *gorm.DB {
+	// 	return tx.Where("biz = ? AND biz_id = ? AND uid = ?", biz, bizId, uid).First(&collectionInfo)
+	// }))
 	if err != nil {
 		return UserCollectionBiz{}, err
 	}
@@ -239,5 +245,23 @@ func (i *GormInteractionDAO) DeleteCollectionInfo(ctx context.Context, biz strin
 				"collect_count": gorm.Expr("collect_count - 1"),
 				"utime":         time.Now().UnixMilli(),
 			}).Error
+	})
+}
+
+// 批量增加指定业务类型和业务 ID 对应的浏览计数
+func (i *GormInteractionDAO) BatchIncrReadCnt(ctx context.Context, biz []string, bizIds []int64) error {
+	return i.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
+		exDAO := NewGormInteractionDAO(tx)
+
+		for i, b := range biz {
+			// 调用 IncrViewCount 方法增加浏览量
+			err := exDAO.IncrViewCount(ctx, b, bizIds[i])
+			if err != nil {
+				//return err
+				fmt.Println("增加浏览量失败:", err)
+				return err
+			}
+		}
+		return nil
 	})
 }

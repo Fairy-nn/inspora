@@ -7,18 +7,19 @@
 package main
 
 import (
+	"github.com/Fairy-nn/inspora/internal/events/article"
 	"github.com/Fairy-nn/inspora/internal/repository"
 	"github.com/Fairy-nn/inspora/internal/repository/cache"
 	"github.com/Fairy-nn/inspora/internal/repository/dao"
 	"github.com/Fairy-nn/inspora/internal/service"
 	"github.com/Fairy-nn/inspora/internal/web"
 	"github.com/Fairy-nn/inspora/ioc"
-	"github.com/gin-gonic/gin"
 )
 
 // Injectors from wire.go:
 
-func InitInspora() *gin.Engine {
+// func InitInspora() *gin.Engine {
+func InitApp() *App {
 	v := ioc.InitMiddlewares()
 	db := ioc.InitDB()
 	userDaoInterface := dao.NewUserDAO(db)
@@ -34,12 +35,21 @@ func InitInspora() *gin.Engine {
 	articleDaoInterface := dao.NewArticleDAO(db)
 	articleCache := cache.NewRedisArticleCache(cmdable)
 	articleRepository := repository.NewCachedArticleRepository(articleDaoInterface, articleCache, userRepositoryInterface)
-	articleServiceInterface := service.NewArticleService(articleRepository)
+	client := ioc.InitKafka()
+	syncProducer := ioc.NewSyncProducer(client)
+	producer := article.NewKafkaProducer(syncProducer)
+	articleServiceInterface := service.NewArticleService(articleRepository, producer)
 	interactionDaoInterface := dao.NewGormInteractionDAO(db)
 	interactionCacheInterface := cache.NewRedisInteractionCache(cmdable)
 	interactionRepositoryInterface := repository.NewInteractionRepository(interactionDaoInterface, interactionCacheInterface)
 	interactionServiceInterface := service.NewInteractionService(interactionRepositoryInterface)
 	articleHandler := web.NewArticleHandler(articleServiceInterface, interactionServiceInterface)
 	engine := ioc.InitGin(v, userHandler, articleHandler)
-	return engine
+	consumer := article.NewInteractionBatchConsumer(client, interactionRepositoryInterface)
+	v2 := ioc.NewSyncConsumer(consumer)
+	app := &App{
+		Server:    engine,
+		Consumers: v2,
+	}
+	return app
 }

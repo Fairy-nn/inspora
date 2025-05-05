@@ -21,8 +21,7 @@ type ArticleHandler struct {
 }
 
 // NewArticleHandler 创建文章处理器
-func NewArticleHandler(svc service.ArticleServiceInterface,
-	interactionSvc service.InteractionServiceInterface) *ArticleHandler {
+func NewArticleHandler(svc service.ArticleServiceInterface,interactionSvc service.InteractionServiceInterface) *ArticleHandler {
 	return &ArticleHandler{
 		svc:            svc,
 		interactionSvc: interactionSvc,
@@ -329,7 +328,7 @@ func (a *ArticleHandler) PubDetail(c *gin.Context) {
 	// 并发获取文章信息
 	eg.Go(func() error {
 		var err error
-		art, err = a.svc.FindPublicArticleById(c, id)
+		art, err = a.svc.FindPublicArticleById(c, id,userID.(int64))
 		return err
 	})
 
@@ -356,12 +355,12 @@ func (a *ArticleHandler) PubDetail(c *gin.Context) {
 		return
 	}
 
-	go func() {
-		err := a.interactionSvc.IncrViewCount(c, a.biz, art.ID)
-		if err != nil {
-			fmt.Printf("增加文章浏览量失败:%v, id:%d\n", err, art.ID)
-		}
-	}()
+	// go func() {
+	// 	err := a.interactionSvc.IncrViewCount(c, a.biz, art.ID)
+	// 	if err != nil {
+	// 		fmt.Printf("增加文章浏览量失败:%v, id:%d\n", err, art.ID)
+	// 	}
+	// }()
 
 	
 	c.JSON(200, gin.H{

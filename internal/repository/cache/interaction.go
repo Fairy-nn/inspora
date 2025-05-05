@@ -29,6 +29,7 @@ type InteractionCacheInterface interface {
 	Get(ctx context.Context, biz string, bizId int64) (domain.Interaction, error)
 	Set(ctx context.Context, biz string, bizId int64, interaction domain.Interaction) error
 	DecrCollectCntIfPresent(ctx context.Context, biz string, bizId int64) error
+	BatchIncrViewCntIfPresent(ctx context.Context, biz []string, bizIds []int64) error
 }
 
 type RedisInteractionCache struct {
@@ -113,4 +114,25 @@ func (r *RedisInteractionCache) Set(ctx context.Context, biz string, bizId int64
 		return err
 	}
 	return r.client.Expire(ctx, r.Key(biz, bizId), 0).Err()
+}
+
+// 批量增加浏览量
+func (r *RedisInteractionCache) BatchIncrViewCntIfPresent(ctx context.Context, biz []string, bizIds []int64) error {
+	if len(biz) != len(bizIds) {
+		return fmt.Errorf("biz and bizIds length mismatch")
+	}
+
+	if len(biz) == 0 {
+		return nil
+	}
+
+	// 使用管道化操作来批量增加浏览量
+	pipeline:= r.client.Pipeline()
+	for i := 0; i < len(biz); i++ {
+		// 使用 Eval 命令执行 Lua 脚本，增加浏览量
+		pipeline.Eval(ctx, luaIncrCnt, []string{r.Key(biz[i], bizIds[i])}, fieldViewCount, 1)
+	}
+	// 执行管道中所有排队的命令，将结果一次性返回
+	_, err := pipeline.Exec(ctx)
+	return err
 }

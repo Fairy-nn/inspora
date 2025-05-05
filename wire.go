@@ -3,17 +3,18 @@
 package main
 
 import (
+	events "github.com/Fairy-nn/inspora/internal/events/article"
 	"github.com/Fairy-nn/inspora/internal/repository"
 	"github.com/Fairy-nn/inspora/internal/repository/cache"
 	"github.com/Fairy-nn/inspora/internal/repository/dao"
 	"github.com/Fairy-nn/inspora/internal/service"
 	"github.com/Fairy-nn/inspora/internal/web"
 	"github.com/Fairy-nn/inspora/ioc"
-	"github.com/gin-gonic/gin"
 	"github.com/google/wire"
 )
 
-func InitInspora() *gin.Engine {
+// func InitInspora() *gin.Engine {
+func InitApp() *App {
 	wire.Build(
 		ioc.InitDB,
 		ioc.InitCache,
@@ -45,7 +46,15 @@ func InitInspora() *gin.Engine {
 		dao.NewGormInteractionDAO,
 		service.NewInteractionService,
 
+		ioc.InitKafka,
+		ioc.NewSyncProducer,
+		ioc.NewSyncConsumer,
+		//events.NewKafkaConsumer,
+		events.NewKafkaProducer,
+		events.NewInteractionBatchConsumer,
+		wire.Struct(new(App), "*"), // 绑定 App 结构体
 	)
 
-	return new(gin.Engine)
+	//return new(gin.Engine)
+	return new(App)
 }
