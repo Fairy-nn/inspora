@@ -18,6 +18,7 @@ type InteractionServiceInterface interface {
 	Collect(ctx context.Context, biz string, bizId int64, cid, uid int64) error
 	CancelCollect(ctx context.Context, biz string, bizId int64, cid, uid int64) error
 	Get(ctx context.Context, biz string, bizId, uid int64) (domain.Interaction, error)
+	GetByIds(ctx context.Context, biz string, ids []int64) (map[int64]domain.Interaction, error)
 }
 
 type InteractionService struct {
@@ -118,4 +119,9 @@ func (i *InteractionService) Liked(ctx context.Context, biz string, bizId, uid i
 // Collected 判断是否收藏
 func (i *InteractionService) Collected(ctx context.Context, biz string, bizId, uid int64) (bool, error) {
 	return i.repo.Collected(ctx, biz, bizId, uid)
+}
+
+// GetByIds 批量获取交互信息
+func (i *InteractionService) GetByIds(ctx context.Context, biz string, ids []int64) (map[int64]domain.Interaction, error) {
+	return i.repo.GetByIds(ctx, biz, ids)
 }

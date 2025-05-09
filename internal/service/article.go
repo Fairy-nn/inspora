@@ -3,8 +3,10 @@ package service
 import (
 	"context"
 	"fmt"
-	events "github.com/Fairy-nn/inspora/internal/events/article"
+	"time"
+
 	"github.com/Fairy-nn/inspora/internal/domain"
+	events "github.com/Fairy-nn/inspora/internal/events/article"
 	"github.com/Fairy-nn/inspora/internal/repository"
 )
 
@@ -16,6 +18,7 @@ type ArticleServiceInterface interface {
 	List(ctx context.Context, userID int64, limit int, offset int) ([]domain.Article, error)
 	FindById(ctx context.Context, id, uid int64) (domain.Article, error)
 	FindPublicArticleById(ctx context.Context, id int64, uid int64) (domain.Article, error)
+	ListPublic(ctx context.Context, startTime time.Time, offset, limit int) ([]domain.Article, error)
 }
 
 // ArticleService 文章服务实现
@@ -88,4 +91,10 @@ func (a *ArticleService) FindPublicArticleById(ctx context.Context, id int64, ui
 		}()
 	}
 	return article, err
+}
+
+// ListPublic 取出规定时间内的文章列表
+func (a *ArticleService) ListPublic(ctx context.Context, startTime time.Time, offset, limit int) ([]domain.Article, error) {
+	// 根据时间获取文章列表
+	return a.repo.ListPublic(ctx, startTime, offset, limit)
 }

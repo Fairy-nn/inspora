@@ -13,7 +13,6 @@ import (
 	"github.com/google/wire"
 )
 
-// func InitInspora() *gin.Engine {
 func InitApp() *App {
 	wire.Build(
 		ioc.InitDB,
@@ -21,6 +20,9 @@ func InitApp() *App {
 		ioc.InitSMS,
 		ioc.InitGin,
 		ioc.InitMiddlewares,
+		ioc.InitKafka,
+		ioc.NewSyncProducer,
+		ioc.NewSyncConsumer,
 
 		web.NewUserHandler,
 		cache.NewUserCacheV1,
@@ -46,12 +48,16 @@ func InitApp() *App {
 		dao.NewGormInteractionDAO,
 		service.NewInteractionService,
 
-		ioc.InitKafka,
-		ioc.NewSyncProducer,
-		ioc.NewSyncConsumer,
 		//events.NewKafkaConsumer,
 		events.NewKafkaProducer,
 		events.NewInteractionBatchConsumer,
+
+		ioc.InitRankingRepository,
+		service.NewBatchRankService,
+
+		ioc.InitRankingJob,
+		ioc.InitJobs,
+
 		wire.Struct(new(App), "*"), // 绑定 App 结构体
 	)
 

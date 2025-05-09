@@ -20,6 +20,7 @@ type InteractionRepositoryInterface interface {
 	Collected(ctx context.Context, biz string, bizId, uid int64) (bool, error)
 	RemoveCollectionItem(ctx context.Context, biz string, bizId, cid, uid int64) error
 	BatchIncrViewCount(ctx context.Context, biz []string, bizIds []int64) error
+	GetByIds(ctx context.Context, biz string, ids []int64) (map[int64]domain.Interaction, error)
 }
 
 type InteractionRepository struct {
@@ -170,4 +171,18 @@ func (i *InteractionRepository) BatchIncrViewCount(ctx context.Context, biz []st
 	}
 	// 然后批量增加缓存中的浏览量
 	return i.cache.BatchIncrViewCntIfPresent(ctx, biz, bizIds)
+}
+
+func (i *InteractionRepository) GetByIds(ctx context.Context, biz string, ids []int64) (map[int64]domain.Interaction, error) {
+	interactions, err := i.dao.GetByIds(ctx, biz, ids)
+	if err != nil {
+		return nil, err
+	}
+
+	res := make(map[int64]domain.Interaction)
+	for _, interaction := range interactions {
+		res[interaction.BizID] = i.toDomain(interaction)
+	}
+
+	return res, nil
 }

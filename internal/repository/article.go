@@ -25,6 +25,8 @@ type ArticleRepository interface {
 	FindById(ctx context.Context, id, uid int64) (domain.Article, error)
 	// FindPublicArticleById 根据ID获取公开文章
 	FindPublicArticleById(ctx context.Context, id int64) (domain.Article, error)
+	// ListPublic 获取公开文章列表
+	ListPublic(ctx context.Context, startTime time.Time, offset, limit int) ([]domain.Article, error)
 }
 
 type CachedArticleRepository struct {
@@ -236,4 +238,13 @@ func (c *CachedArticleRepository) FindPublicArticleById(ctx context.Context, id 
 	}()
 
 	return res, nil
+}
+
+// ListPublic 获取公开文章列表
+func (c *CachedArticleRepository) ListPublic(ctx context.Context, startTime time.Time, offset, limit int) ([]domain.Article, error) {
+	res, err := c.dao.ListPublic(ctx, startTime, offset, limit)
+	if err != nil {
+		return nil, err
+	}
+	return c.toDomainList(res), nil
 }

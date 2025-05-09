@@ -18,7 +18,6 @@ import (
 
 // Injectors from wire.go:
 
-// func InitInspora() *gin.Engine {
 func InitApp() *App {
 	v := ioc.InitMiddlewares()
 	db := ioc.InitDB()
@@ -43,13 +42,18 @@ func InitApp() *App {
 	interactionCacheInterface := cache.NewRedisInteractionCache(cmdable)
 	interactionRepositoryInterface := repository.NewInteractionRepository(interactionDaoInterface, interactionCacheInterface)
 	interactionServiceInterface := service.NewInteractionService(interactionRepositoryInterface)
-	articleHandler := web.NewArticleHandler(articleServiceInterface, interactionServiceInterface)
+	rankingRepositoryInterface := ioc.InitRankingRepository(cmdable)
+	rankingServiceInterface := service.NewBatchRankService(articleServiceInterface, interactionServiceInterface, rankingRepositoryInterface)
+	articleHandler := web.NewArticleHandler(articleServiceInterface, interactionServiceInterface, rankingServiceInterface)
 	engine := ioc.InitGin(v, userHandler, articleHandler)
 	consumer := article.NewInteractionBatchConsumer(client, interactionRepositoryInterface)
 	v2 := ioc.NewSyncConsumer(consumer)
+	rankingJob := ioc.InitRankingJob(rankingServiceInterface)
+	cron := ioc.InitJobs(rankingJob)
 	app := &App{
 		Server:    engine,
 		Consumers: v2,
+		Cron:      cron,
 	}
 	return app
 }

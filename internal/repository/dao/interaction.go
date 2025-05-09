@@ -64,6 +64,7 @@ type InteractionDaoInterface interface {
 	GetCollectionInfo(ctx context.Context, biz string, bizId, uid int64) (UserCollectionBiz, error)
 	DeleteCollectionInfo(ctx context.Context, biz string, bizId, uid int64) error
 	BatchIncrReadCnt(ctx context.Context, biz []string, bizIds []int64) error
+	GetByIds(ctx context.Context, biz string, ids []int64) ([]InteractionDao, error)
 }
 
 type GormInteractionDAO struct {
@@ -264,4 +265,17 @@ func (i *GormInteractionDAO) BatchIncrReadCnt(ctx context.Context, biz []string,
 		}
 		return nil
 	})
+}
+
+// GetByIds 批量获取交互信息
+func (dao *GormInteractionDAO) GetByIds(ctx context.Context, biz string, ids []int64) ([]InteractionDao, error) {
+	var interactions []InteractionDao
+	fmt.Println("GetByIds: ", biz, ids)
+	err := dao.db.WithContext(ctx).Where("biz = ? AND biz_id IN ?", biz, ids).Find(&interactions).Error
+	// 查找到的结果
+	fmt.Printf("GetByIds: %v\n", interactions)
+	if err != nil {
+		return nil, err
+	}
+	return interactions, nil
 }

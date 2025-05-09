@@ -18,6 +18,7 @@ type ArticleDaoInterface interface {
 	FindByAuthor(ctx context.Context, authorID int64, offset, limit int) ([]Article, error)
 	FindById(ctx context.Context, id, uid int64) (Article, error)
 	FindPublicArticleById(ctx context.Context, id int64) (PublishArticle, error)
+	ListPublic(ctx context.Context, startTime time.Time, offset, limit int) ([]Article, error)
 }
 
 // 这是制作库的数据库表结构
@@ -163,13 +164,13 @@ func (a *ArticleGORMDAO) SyncStatus(ctx context.Context, articleID, authorID int
 }
 
 // FindByAuthor 根据作者ID查找文章
-func (a *ArticleGORMDAO) FindByAuthor(ctx context.Context, authorID int64, offset, limit int) ([]Article, error) {	
+func (a *ArticleGORMDAO) FindByAuthor(ctx context.Context, authorID int64, offset, limit int) ([]Article, error) {
 	var articles []Article
 	res := a.db.WithContext(ctx).Where("author_id = ?", authorID).Offset(offset).Limit(limit).Order("utime DESC").Find(&articles)
 	if res.Error != nil {
 		return nil, res.Error
 	}
-	
+
 	return articles, nil
 }
 
@@ -188,4 +189,11 @@ func (a *ArticleGORMDAO) FindPublicArticleById(ctx context.Context, id int64) (P
 	var pub PublishArticle
 	err := a.db.WithContext(ctx).Where("id = ?", id).First(&pub).Error
 	return pub, err
+}
+
+// ListPublic 根据时间获取文章列表
+func (a *ArticleGORMDAO) ListPublic(ctx context.Context, startTime time.Time, offset, limit int) ([]Article, error) {
+	var result []Article
+	err := a.db.WithContext(ctx).Where("utime < ?", startTime.UnixMilli()).Order("utime DESC").Offset(offset).Limit(limit).Find(&result)
+	return result, err.Error
 }

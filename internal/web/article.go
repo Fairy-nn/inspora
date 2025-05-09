@@ -18,14 +18,18 @@ type ArticleHandler struct {
 	svc            service.ArticleServiceInterface     // 文章服务
 	interactionSvc service.InteractionServiceInterface // 交互服务
 	biz            string                              // 业务线
+	rankSvc        service.RankingServiceInterface     // 排行榜服务
 }
 
 // NewArticleHandler 创建文章处理器
-func NewArticleHandler(svc service.ArticleServiceInterface,interactionSvc service.InteractionServiceInterface) *ArticleHandler {
+func NewArticleHandler(svc service.ArticleServiceInterface,
+	interactionSvc service.InteractionServiceInterface,
+	rankSvc service.RankingServiceInterface) *ArticleHandler {
 	return &ArticleHandler{
 		svc:            svc,
 		interactionSvc: interactionSvc,
 		biz:            "article",
+		rankSvc:        rankSvc,
 	}
 }
 
@@ -38,11 +42,11 @@ func (a *ArticleHandler) RegisterRoutes(r *gin.Engine) {
 	ag.POST("/list", a.List)         // 文章列表
 	ag.GET("/detail/:id", a.Detail)  // 文章详情,用户查看自己所有状态的文章
 
-	pub := r.Group("/pub")       // 公开文章相关路由
-	pub.GET("/:id", a.PubDetail) // 发布文章详情，用户查看所有已公布的文章
-
+	pub := r.Group("/pub")          // 公开文章相关路由
+	pub.GET("/:id", a.PubDetail)    // 发布文章详情，用户查看所有已公布的文章
 	pub.POST("/like", a.Like)       // 点赞文章
 	pub.POST("/collect", a.Collect) // 收藏文章
+	pub.GET("/rank", a.Ranking)     // 文章排行榜
 
 }
 
@@ -328,7 +332,7 @@ func (a *ArticleHandler) PubDetail(c *gin.Context) {
 	// 并发获取文章信息
 	eg.Go(func() error {
 		var err error
-		art, err = a.svc.FindPublicArticleById(c, id,userID.(int64))
+		art, err = a.svc.FindPublicArticleById(c, id, userID.(int64))
 		return err
 	})
 
@@ -362,7 +366,6 @@ func (a *ArticleHandler) PubDetail(c *gin.Context) {
 	// 	}
 	// }()
 
-	
 	c.JSON(200, gin.H{
 		"message":    "success",
 		"article_id": art.ID,
@@ -404,7 +407,27 @@ func (a *ArticleHandler) Like(c *gin.Context) {
 		return
 	}
 
-	var err error
+	// 加了一个判断，如果用户已经点赞了，就不再执行点赞操作
+	interaction, err := a.interactionSvc.Get(c, a.biz, req.ID, userID.(int64))
+	if err != nil {
+		if err == gorm.ErrRecordNotFound {
+			c.JSON(http.StatusNotFound, gin.H{"error": "交互信息不存在"})
+			return
+		}
+	}
+	if req.Like && interaction.Liked {
+		c.JSON(200, gin.H{
+			"message": "success",
+			"liked":   true,
+		})
+		return
+	} else if !req.Like && !interaction.Liked {
+		c.JSON(200, gin.H{
+			"message": "Already not liked",
+			"liked":   false,
+		})
+		return
+	}
 
 	if req.Like { // true
 		err = a.interactionSvc.Like(c, a.biz, req.ID, userID.(int64))
@@ -419,6 +442,7 @@ func (a *ArticleHandler) Like(c *gin.Context) {
 
 	c.JSON(200, gin.H{
 		"message": "Success",
+		"liked":   req.Like,
 	})
 }
 
@@ -461,5 +485,47 @@ func (a *ArticleHandler) Collect(c *gin.Context) {
 
 	c.JSON(200, gin.H{
 		"message": "Success",
+	})
+}
+
+// Ranking 文章排行榜
+func (a *ArticleHandler) Ranking(c *gin.Context) {
+	// 调用服务层获取文章排行榜
+	articles, err := a.rankSvc.GetTopN(c)
+	if err != nil {
+		fmt.Println("获取排行榜失败", err)
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "获取排行榜失败"})
+		return
+	}
+
+	// 如果获取到的文章为空，则主动触发排行榜计算
+	if len(articles) == 0 {
+		fmt.Println("排行榜为空，正在主动触发计算...")
+		err := a.rankSvc.TopN(c)
+		if err != nil {
+			fmt.Println("计算排行榜失败", err)
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "计算排行榜失败"})
+			return
+		}
+
+		// 重新获取计算后的排行榜
+		articles, err = a.rankSvc.GetTopN(c)
+		if err != nil {
+			fmt.Println("重新获取排行榜失败", err)
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "获取排行榜失败"})
+			return
+		}
+	}
+
+	// 将文章列表转换为前端需要的格式
+	articleVOs := make([]ArticleV0, 0, len(articles))
+	for _, article := range articles {
+		articleVOs = append(articleVOs, toArticleVO(article))
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"message":  "success",
+		"articles": articleVOs,
+		"total":    len(articleVOs),
 	})
 }
