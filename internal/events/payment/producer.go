@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 
+	"github.com/Fairy-nn/inspora/internal/domain"
 	"github.com/IBM/sarama"
 )
 
@@ -34,4 +35,16 @@ func (s *SaramaPaymentProducer) ProducePaymentEvent(ctx context.Context, evt Pay
 		Value: sarama.ByteEncoder(data),
 	})
 	return err
+}
+// 将 payment 的状态转化为 reward 的状态
+func (p PaymentEvent) ToRewardDomainStatus() domain.RewardStatus {
+	switch p.Status {
+	case 1:
+		return domain.RewardStatusInit
+	case 2:
+		return domain.RewardStatusPaid
+	case 3, 4:
+		return domain.RewardStatusFailed
+	}
+	return domain.RewardStatusUnknown
 }

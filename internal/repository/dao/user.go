@@ -19,6 +19,7 @@ type User struct {
 	Ctime    int64          `gorm:"autoCreateTime"`
 	Utime    int64          `gorm:"autoUpdateTime"`
 	Phone    sql.NullString `gorm:"type:varchar(20);unique"` // 手机号，唯一索引会冲突,所以允许可以为空
+	Balance  int64          `gorm:"default:0"`               // 用户余额，单位：分
 }
 
 // 在这里添加其他字段，例如用户名、头像等
@@ -30,6 +31,7 @@ type UserDaoInterface interface {
 	GetByID(ctx context.Context, id int64) (User, error)
 	Insert(ctx context.Context, user *User) error
 	GetByEmail(ctx context.Context, email string) (*User, error)
+	UpdateBalance(ctx context.Context, userID int64, amount int64) error
 }
 
 type UserDAO struct {
@@ -102,4 +104,12 @@ func (ud *UserDAO) GetByPhone(ctx context.Context, phone string) (User, error) {
 		return User{}, err
 	}
 	return user, nil
+}
+
+// UpdateBalance 更新用户余额
+func (ud *UserDAO) UpdateBalance(ctx context.Context, userID int64, amount int64) error {
+	// 更新用户余额
+	return ud.db.WithContext(ctx).Model(&User{}).Where("id = ?", userID).
+		Update("balance", gorm.Expr("balance + ?", amount)).
+		Update("utime", time.Now().UnixMilli()).Error
 }

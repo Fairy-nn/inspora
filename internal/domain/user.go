@@ -10,5 +10,6 @@ type User struct {
 	Ctime    int64  `json:"ctime"` // 创建时间
 	Phone    string `json:"phone"`
 	Name     string `json:"name"`
-	
+	Balance  int64  `json:"balance"` // 用户余额，单位：分
+
 }

@@ -18,6 +18,7 @@ type UserRepositoryInterface interface {
 	GetByPhone(ctx context.Context, phone string) (domain.User, error)
 	GetByID(ctx context.Context, id int64) (domain.User, error)
 	GetByEmail(ctx context.Context, email string) (domain.User, error)
+	UpdateBalance(ctx context.Context, userID int64, amount int64) error
 }
 
 type UserRepository struct {
@@ -119,6 +120,7 @@ func (r *UserRepository) enityToDomain(u dao.User) domain.User {
 		Phone:    u.Phone.String,
 		Username: u.Username,
 		Password: u.Password,
+		Balance:  u.Balance,
 	}
 }
 
@@ -131,4 +133,16 @@ func (r *UserRepository) domainToEntity(u domain.User) dao.User {
 		Password: u.Password,
 		Phone:    sql.NullString{String: u.Phone, Valid: u.Phone != ""},
 	}
+}
+
+func (r *UserRepository) UpdateBalance(ctx context.Context, userID int64, amount int64) error {
+	err := r.dao.UpdateBalance(ctx, userID, amount)
+	if err != nil {
+		return err
+	}
+
+	// 清除缓存以便下次获取最新的余额
+	r.cache.Del(ctx, userID)
+
+	return nil
 }

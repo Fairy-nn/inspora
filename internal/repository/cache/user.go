@@ -16,6 +16,7 @@ type UserCacheInterface interface {
 	Get(ctx context.Context, id int64) (domain.User, error)
 	Set(ctx context.Context, user domain.User) error
 	Key(id int64) string
+	Del(ctx context.Context, id int64) error
 }
 
 // client 可以接收单机redis客户端或集群redis客户端
@@ -61,4 +62,9 @@ func (c *UserCache) Set(ctx context.Context, user domain.User) error {
 		return err
 	}
 	return c.client.Set(ctx, c.Key(user.ID), val, c.expiration).Err()
+}
+
+// Del方法用于删除redis缓存中的用户信息
+func (c *UserCache) Del(ctx context.Context, id int64) error {
+	return c.client.Del(ctx, c.Key(id)).Err()
 }

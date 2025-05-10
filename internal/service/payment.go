@@ -22,6 +22,8 @@ type PaymentServiceInterface interface {
 	SyncWechatInfo(ctx context.Context, BizTradeNo string) error
 	// FindExpiredPayment 查询过期的支付记录
 	FindExpiredPayment(ctx context.Context, offset int, limit int, t time.Time) ([]domain.Payment, error)
+	// GetPayment 根据业务交易号获取支付记录
+	GetPayment(ctx context.Context, bizTradeNO string) (domain.Payment, error)
 }
 
 type NativePaymentService struct {
@@ -128,4 +130,9 @@ func (n *NativePaymentService) SyncWechatInfo(ctx context.Context, BizTradeNo st
 // FindExpiredPayment 查询过期的支付记录
 func (n *NativePaymentService) FindExpiredPayment(ctx context.Context, offset int, limit int, t time.Time) ([]domain.Payment, error) {
 	return n.repo.FindExpiredPayments(ctx, offset, limit, t)
+}
+
+// GetPayment 根据业务交易号获取支付记录
+func (n *NativePaymentService) GetPayment(ctx context.Context, bizTradeNO string) (domain.Payment, error) {
+	return n.repo.GetPayment(ctx, bizTradeNO)
 }

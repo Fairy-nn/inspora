@@ -7,5 +7,5 @@ import (
 func InitDB(db *gorm.DB) error {
 	return db.AutoMigrate(&User{}, &Article{}, &PublishArticle{},
 		&InteractionDao{}, &UserLikeBiz{}, &Collection{},
-		&UserCollectionBiz{},&Payment{})
+		&UserCollectionBiz{},&Payment{},&Reward{})
 }

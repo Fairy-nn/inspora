@@ -17,6 +17,7 @@ type UserServiceInterface interface {
 	Login(ctx *gin.Context, u domain.User) (domain.User, error)
 	Profile(ctx context.Context, userID int64) (domain.User, error)
 	FindOrCreateUser(ctx *gin.Context, phone string) (domain.User, error)
+	UpdateUserBalance(ctx context.Context, userID int64, amount int64) error
 }
 
 // UserService 用户服务结构体
@@ -109,4 +110,9 @@ func (u *UserService) FindOrCreateUser(ctx *gin.Context, phone string) (domain.U
 		return domain.User{}, err
 	}
 	return u.repo.GetByPhone(ctx, phone)
+}
+
+// UpdateUserBalance 更新用户余额
+func (u *UserService) UpdateUserBalance(ctx context.Context, userID int64, amount int64) error {
+	return u.repo.UpdateBalance(ctx, userID, amount)
 }
