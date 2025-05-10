@@ -9,12 +9,19 @@ import (
 	events "github.com/Fairy-nn/inspora/internal/events/article"
 	"github.com/Fairy-nn/inspora/internal/repository"
 	"github.com/wechatpay-apiv3/wechatpay-go/core"
+	"github.com/wechatpay-apiv3/wechatpay-go/services/payments"
 	"github.com/wechatpay-apiv3/wechatpay-go/services/payments/native"
 )
 
 type PaymentServiceInterface interface {
 	// Prepay 根据提供的支付信息生成预支付URL
 	Prepay(ctx context.Context, payment domain.Payment) (string, error)
+	// HandleCallback 处理微信支付回调
+	HandleCallback(ctx context.Context, txn *payments.Transaction) error
+	// SyncWechatInfo 同步微信支付信息-对账功能
+	SyncWechatInfo(ctx context.Context, BizTradeNo string) error
+	// FindExpiredPayment 查询过期的支付记录
+	FindExpiredPayment(ctx context.Context, offset int, limit int, t time.Time) ([]domain.Payment, error)
 }
 
 type NativePaymentService struct {
@@ -72,4 +79,53 @@ func (n *NativePaymentService) Prepay(ctx context.Context, payment domain.Paymen
 		return "", err
 	}
 	return *resp.CodeUrl, nil
+}
+
+// HandleCallback 处理微信支付回调
+func (n *NativePaymentService) HandleCallback(ctx context.Context, txn *payments.Transaction) error {
+	return n.updateByTxn(ctx, txn)
+}
+
+// updateByTxn 更新支付状态
+func (n *NativePaymentService) updateByTxn(ctx context.Context, txn *payments.Transaction) error {
+	// 将微信支付的状态转换为我们自己的状态
+	status, ok := n.status[*txn.TradeState]
+
+	if !ok {
+		return fmt.Errorf("unknown status: %s", *txn.TradeState)
+	}
+	// 更新数据库支付状态，使用交易订单号、状态和微信支付交易ID更新本地数据库中的支付记录
+	err := n.repo.UpdatePayment(ctx, domain.Payment{
+		BizTradeNo: *txn.OutTradeNo,
+		TxnID:      *txn.TransactionId,
+		Status:     status,
+	})
+
+	if err != nil {
+		return err
+	}
+
+	// 消息系统通知
+
+	return nil
+}
+
+// SyncWechatInfo 同步微信支付信息
+func (n *NativePaymentService) SyncWechatInfo(ctx context.Context, BizTradeNo string) error {
+	// 查询微信支付订单
+	// 通过业务订单号查询微信支付订单
+	txn, _, err := n.svc.QueryOrderByOutTradeNo(ctx, native.QueryOrderByOutTradeNoRequest{
+		OutTradeNo: core.String(BizTradeNo),
+		Mchid:      core.String(n.mchid),
+	})
+	if err != nil {
+		return err
+	}
+	// 更新本地支付状态
+	return n.updateByTxn(ctx, txn)
+}
+
+// FindExpiredPayment 查询过期的支付记录
+func (n *NativePaymentService) FindExpiredPayment(ctx context.Context, offset int, limit int, t time.Time) ([]domain.Payment, error) {
+	return n.repo.FindExpiredPayments(ctx, offset, limit, t)
 }
