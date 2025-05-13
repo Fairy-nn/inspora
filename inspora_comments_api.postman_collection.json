@@ -1,0 +1,217 @@
+{
+    "info": {
+        "_postman_id": "YOUR_POSTMAN_COLLECTION_ID",
+        "name": "Inspora Comment APIs",
+        "description": "Postman collection for testing Comment APIs in the Inspora project.\n\n**Base URL Variable**: `{{baseUrl}}` (default: https://localhost:8080)\n**Authentication**: Most routes require JWT authentication. Set the `{{authToken}}` collection variable with your `Bearer <YOUR_JWT_TOKEN>`.",
+        "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+    },
+    "item": [
+        {
+            "name": "Create Comment",
+            "request": {
+                "method": "POST",
+                "header": [
+                    {
+                        "key": "Content-Type",
+                        "value": "application/json"
+                    },
+                    {
+                        "key": "Authorization",
+                        "value": "{{authToken}}"
+                    }
+                ],
+                "body": {
+                    "mode": "raw",
+                    "raw": "{\n    \"content\": \"This is a test comment on an article.\",\n    \"parent_id\": 0,\n    \"biz\": \"article\",\n    \"biz_id\": 123\n}",
+                    "options": {
+                        "raw": {
+                            "language": "json"
+                        }
+                    }
+                },
+                "url": {
+                    "raw": "{{baseUrl}}/comments",
+                    "protocol": "https",
+                    "host": [
+                        "{{baseUrl}}"
+                    ],
+                    "path": [
+                        "comments"
+                    ]
+                },
+                "description": "Creates a new comment. \nRequires `Authorization` header.\n\n**Request Body** (`CreateCommentReq`):\n- `content` (string, required): The comment content.\n- `parent_id` (int64, optional): ID of the parent comment. Use 0 for a root comment.\n- `biz` (string, required): The business type (e.g., \"article\").\n- `biz_id` (int64, required): The ID of the business entity being commented on."
+            },
+            "response": []
+        },
+        {
+            "name": "Delete Comment",
+            "request": {
+                "method": "DELETE",
+                "header": [
+                    {
+                        "key": "Authorization",
+                        "value": "{{authToken}}"
+                    }
+                ],
+                "url": {
+                    "raw": "{{baseUrl}}/comments/:commentId",
+                    "protocol": "https",
+                    "host": [
+                        "{{baseUrl}}"
+                    ],
+                    "path": [
+                        "comments",
+                        ":commentId"
+                    ],
+                    "variable": [
+                        {
+                            "key": "commentId",
+                            "value": "1",
+                            "description": "ID of the comment to delete"
+                        }
+                    ]
+                },
+                "description": "Deletes a comment by its ID. \nRequires `Authorization` header. The user must be the owner of the comment."
+            },
+            "response": []
+        },
+        {
+            "name": "Get Article Comments",
+            "request": {
+                "method": "GET",
+                "header": [
+                    {
+                        "key": "Authorization",
+                        "value": "{{authToken}}"
+                    }
+                ],
+                "url": {
+                    "raw": "{{baseUrl}}/comments/articles/:articleId?min_id=0&limit=10",
+                    "protocol": "https",
+                    "host": [
+                        "{{baseUrl}}"
+                    ],
+                    "path": [
+                        "comments",
+                        "articles",
+                        ":articleId"
+                    ],
+                    "query": [
+                        {
+                            "key": "min_id",
+                            "value": "0",
+                            "description": "Fetch comments with ID greater than this value (for pagination). Default 0."
+                        },
+                        {
+                            "key": "limit",
+                            "value": "10",
+                            "description": "Number of comments to fetch. Default 20."
+                        }
+                    ],
+                    "variable": [
+                        {
+                            "key": "articleId",
+                            "value": "123",
+                            "description": "ID of the article"
+                        }
+                    ]
+                },
+                "description": "Retrieves comments for a specific article. Supports pagination using `min_id` and `limit` query parameters.\nMay require `Authorization` header depending on JWT middleware setup."
+            },
+            "response": []
+        },
+        {
+            "name": "Get Children Comments",
+            "request": {
+                "method": "GET",
+                "header": [
+                    {
+                        "key": "Authorization",
+                        "value": "{{authToken}}"
+                    }
+                ],
+                "url": {
+                    "raw": "{{baseUrl}}/comments/:commentId/children?min_id=0&limit=5",
+                    "protocol": "https",
+                    "host": [
+                        "{{baseUrl}}"
+                    ],
+                    "path": [
+                        "comments",
+                        ":commentId",
+                        "children"
+                    ],
+                    "query": [
+                        {
+                            "key": "min_id",
+                            "value": "0",
+                            "description": "Fetch child comments with ID greater than this value (for pagination). Default 0."
+                        },
+                        {
+                            "key": "limit",
+                            "value": "5",
+                            "description": "Number of child comments to fetch. Default 20."
+                        }
+                    ],
+                    "variable": [
+                        {
+                            "key": "commentId",
+                            "value": "1",
+                            "description": "ID of the parent comment"
+                        }
+                    ]
+                },
+                "description": "Retrieves child comments for a specific parent comment. Supports pagination using `min_id` and `limit` query parameters.\nMay require `Authorization` header."
+            },
+            "response": []
+        },
+        {
+            "name": "Get Hot Comments for Article",
+            "request": {
+                "method": "GET",
+                "header": [
+                    {
+                        "key": "Authorization",
+                        "value": "{{authToken}}"
+                    }
+                ],
+                "url": {
+                    "raw": "{{baseUrl}}/comments/hot/articles/:articleId",
+                    "protocol": "https",
+                    "host": [
+                        "{{baseUrl}}"
+                    ],
+                    "path": [
+                        "comments",
+                        "hot",
+                        "articles",
+                        ":articleId"
+                    ],
+                    "variable": [
+                        {
+                            "key": "articleId",
+                            "value": "123",
+                            "description": "ID of the article"
+                        }
+                    ]
+                },
+                "description": "Retrieves hot comments for a specific article (e.g., top 3).\nMay require `Authorization` header."
+            },
+            "response": []
+        }
+    ],
+    "variable": [
+        {
+            "key": "baseUrl",
+            "value": "https://localhost:8080",
+            "type": "string",
+            "description": "Base URL of the API. Default is based on CORS config in web.go."
+        },
+        {
+            "key": "authToken",
+            "value": "Bearer <YOUR_JWT_TOKEN>",
+            "type": "string",
+            "description": "JWT Authorization Token. Replace <YOUR_JWT_TOKEN> with your actual token."
+        }
+    ]
+}

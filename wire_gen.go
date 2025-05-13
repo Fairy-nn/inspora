@@ -14,6 +14,7 @@ import (
 	"github.com/Fairy-nn/inspora/internal/service"
 	"github.com/Fairy-nn/inspora/internal/web"
 	"github.com/Fairy-nn/inspora/ioc"
+	"github.com/google/wire"
 )
 
 // Injectors from wire.go:
@@ -45,7 +46,12 @@ func InitApp() *App {
 	rankingRepositoryInterface := ioc.InitRankingRepository(cmdable)
 	rankingServiceInterface := service.NewBatchRankService(articleServiceInterface, interactionServiceInterface, rankingRepositoryInterface)
 	articleHandler := web.NewArticleHandler(articleServiceInterface, interactionServiceInterface, rankingServiceInterface)
-	engine := ioc.InitGin(v, userHandler, articleHandler)
+	commentDAO := dao.NewCommentDAO(db)
+	commentCache := cache.NewRedisCommentCache(cmdable)
+	commentRepository := repository.NewCachedCommentRepository(commentDAO, commentCache)
+	commentService := service.NewCommentService(commentRepository)
+	commentHandler := web.NewCommentHandler(commentService)
+	engine := ioc.InitGin(v, userHandler, articleHandler, commentHandler)
 	consumer := article.NewInteractionBatchConsumer(client, interactionRepositoryInterface)
 	v2 := ioc.NewSyncConsumer(consumer)
 	rankingJob := ioc.InitRankingJob(rankingServiceInterface)
@@ -57,3 +63,7 @@ func InitApp() *App {
 	}
 	return app
 }
+
+// wire.go:
+
+var commentServiceSet = wire.NewSet(dao.NewCommentDAO, cache.NewRedisCommentCache, repository.NewCachedCommentRepository, service.NewCommentService, web.NewCommentHandler)

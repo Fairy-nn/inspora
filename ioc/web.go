@@ -7,13 +7,15 @@ import (
 )
 
 func InitGin(middlewares []gin.HandlerFunc, u *web.UserHandler,
-	articleHandler *web.ArticleHandler) *gin.Engine {
+	articleHandler *web.ArticleHandler,
+	commentHandler *web.CommentHandler) *gin.Engine {
 	r := gin.Default()
 	println("gin init")
 	r.Use(middlewares...)
 	u.RegisterRoutes(r)
 	// oauthWechatHandler.RegisterRoutes(r)
 	articleHandler.RegisterRoutes(r)
+	commentHandler.RegisterRoutes(r)
 	return r
 }
 

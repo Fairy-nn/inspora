@@ -13,6 +13,14 @@ import (
 	"github.com/google/wire"
 )
 
+var commentServiceSet = wire.NewSet(
+	dao.NewCommentDAO,
+	cache.NewRedisCommentCache,
+	repository.NewCachedCommentRepository,
+	service.NewCommentService,
+	web.NewCommentHandler,
+)
+
 func InitApp() *App {
 	wire.Build(
 		ioc.InitDB,
@@ -57,7 +65,7 @@ func InitApp() *App {
 
 		ioc.InitRankingJob,
 		ioc.InitJobs,
-
+		commentServiceSet,
 		wire.Struct(new(App), "*"), // 绑定 App 结构体
 	)
 
