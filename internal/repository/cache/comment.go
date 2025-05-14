@@ -19,7 +19,7 @@ const (
 	// 评论缓存前缀
 	commentCacheKeyPrefix = "comment:"
 	// 评论列表缓存前缀
-	commentListCacheKeyPrefix = "comment:list:"
+//	commentListCacheKeyPrefix = "comment:list:"
 	// 热门评论缓存前缀
 	hotCommentCacheKeyPrefix = "comment:hot:"
 )

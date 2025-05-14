@@ -51,7 +51,12 @@ func InitApp() *App {
 	commentRepository := repository.NewCachedCommentRepository(commentDAO, commentCache)
 	commentService := service.NewCommentService(commentRepository)
 	commentHandler := web.NewCommentHandler(commentService)
-	engine := ioc.InitGin(v, userHandler, articleHandler, commentHandler)
+	followRelationDAO := dao.NewFollowRelationDAO(db)
+	followCache := cache.NewRedisFollowCache(cmdable)
+	followRepository := repository.NewFollowRepository(followRelationDAO, followCache)
+	followService := service.NewFollowService(followRepository)
+	followHandler := web.NewFollowHandler(followService)
+	engine := ioc.InitGin(v, userHandler, articleHandler, commentHandler, followHandler)
 	consumer := article.NewInteractionBatchConsumer(client, interactionRepositoryInterface)
 	v2 := ioc.NewSyncConsumer(consumer)
 	rankingJob := ioc.InitRankingJob(rankingServiceInterface)
@@ -67,3 +72,5 @@ func InitApp() *App {
 // wire.go:
 
 var commentServiceSet = wire.NewSet(dao.NewCommentDAO, cache.NewRedisCommentCache, repository.NewCachedCommentRepository, service.NewCommentService, web.NewCommentHandler)
+
+var followServiceSet = wire.NewSet(dao.NewFollowRelationDAO, cache.NewRedisFollowCache, repository.NewFollowRepository, service.NewFollowService, web.NewFollowHandler)

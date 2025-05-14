@@ -21,6 +21,14 @@ var commentServiceSet = wire.NewSet(
 	web.NewCommentHandler,
 )
 
+var followServiceSet = wire.NewSet(
+	dao.NewFollowRelationDAO,
+	cache.NewRedisFollowCache,
+	repository.NewFollowRepository,
+	service.NewFollowService,
+	web.NewFollowHandler,
+)
+
 func InitApp() *App {
 	wire.Build(
 		ioc.InitDB,
@@ -66,6 +74,7 @@ func InitApp() *App {
 		ioc.InitRankingJob,
 		ioc.InitJobs,
 		commentServiceSet,
+		followServiceSet,
 		wire.Struct(new(App), "*"), // 绑定 App 结构体
 	)
 
