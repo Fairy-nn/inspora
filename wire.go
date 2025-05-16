@@ -29,7 +29,14 @@ var followServiceSet = wire.NewSet(
 	web.NewFollowHandler,
 )
 
-func InitApp() *App {
+var searchServiceSet = wire.NewSet(
+    ioc.ElasticsearchSet,
+    ioc.SearchInitializerSet,
+    service.NewSearchService,
+    web.NewSearchHandler,
+)
+
+func InitApp()  (*App, error)  {
 	wire.Build(
 		ioc.InitDB,
 		ioc.InitCache,
@@ -75,9 +82,11 @@ func InitApp() *App {
 		ioc.InitJobs,
 		commentServiceSet,
 		followServiceSet,
+		searchServiceSet,
+
 		wire.Struct(new(App), "*"), // 绑定 App 结构体
 	)
 
 	//return new(gin.Engine)
-	return new(App)
+	return new(App), nil
 }

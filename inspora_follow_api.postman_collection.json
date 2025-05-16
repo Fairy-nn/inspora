@@ -1,0 +1,247 @@
+{
+  "info": {
+    "name": "Inspora - Follow System",
+    "description": "测试 Inspora 项目的用户关注系统相关接口",
+    "_postman_id": "f9a25e8c-1b6d-4f2e-8a12-f5a4e3b7c8d9",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "item": [
+    {
+      "name": "关注用户",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          },
+          {
+            "key": "Authorization",
+            "value": "{{token}}",
+            "type": "text"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n    \"followee\": {{followee_id}}\n}"
+        },
+        "url": {
+          "raw": "{{base_url}}/follow",
+          "host": [
+            "{{base_url}}"
+          ],
+          "path": [
+            "follow"
+          ]
+        },
+        "description": "关注指定用户"
+      },
+      "response": []
+    },
+    {
+      "name": "取消关注",
+      "request": {
+        "method": "DELETE",
+        "header": [
+          {
+            "key": "Authorization",
+            "value": "{{token}}",
+            "type": "text"
+          }
+        ],
+        "url": {
+          "raw": "{{base_url}}/follow?followee={{followee_id}}",
+          "host": [
+            "{{base_url}}"
+          ],
+          "path": [
+            "follow"
+          ],
+          "query": [
+            {
+              "key": "followee",
+              "value": "{{followee_id}}",
+              "description": "被关注用户的ID"
+            }
+          ]
+        },
+        "description": "取消关注指定用户"
+      },
+      "response": []
+    },
+    {
+      "name": "获取关注关系",
+      "request": {
+        "method": "GET",
+        "header": [
+          {
+            "key": "Authorization",
+            "value": "{{token}}",
+            "type": "text"
+          }
+        ],
+        "url": {
+          "raw": "{{base_url}}/follow/relation?followee={{followee_id}}",
+          "host": [
+            "{{base_url}}"
+          ],
+          "path": [
+            "follow",
+            "relation"
+          ],
+          "query": [
+            {
+              "key": "followee",
+              "value": "{{followee_id}}",
+              "description": "被查询关系的用户ID"
+            }
+          ]
+        },
+        "description": "查询当前用户是否关注了指定用户"
+      },
+      "response": []
+    },
+    {
+      "name": "获取关注列表",
+      "request": {
+        "method": "GET",
+        "header": [
+          {
+            "key": "Authorization",
+            "value": "{{token}}",
+            "type": "text"
+          }
+        ],
+        "url": {
+          "raw": "{{base_url}}/follow/followees?user_id={{user_id}}&page=1&page_size=10",
+          "host": [
+            "{{base_url}}"
+          ],
+          "path": [
+            "follow",
+            "followees"
+          ],
+          "query": [
+            {
+              "key": "user_id",
+              "value": "{{user_id}}",
+              "description": "要查询的用户ID，不传则查询当前登录用户"
+            },
+            {
+              "key": "page",
+              "value": "1",
+              "description": "页码，默认1"
+            },
+            {
+              "key": "page_size",
+              "value": "10",
+              "description": "每页条数，默认10，最大100"
+            }
+          ]
+        },
+        "description": "获取用户的关注列表，分页查询"
+      },
+      "response": []
+    },
+    {
+      "name": "获取粉丝列表",
+      "request": {
+        "method": "GET",
+        "header": [
+          {
+            "key": "Authorization",
+            "value": "{{token}}",
+            "type": "text"
+          }
+        ],
+        "url": {
+          "raw": "{{base_url}}/follow/followers?user_id={{user_id}}&page=1&page_size=10",
+          "host": [
+            "{{base_url}}"
+          ],
+          "path": [
+            "follow",
+            "followers"
+          ],
+          "query": [
+            {
+              "key": "user_id",
+              "value": "{{user_id}}",
+              "description": "要查询的用户ID，不传则查询当前登录用户"
+            },
+            {
+              "key": "page",
+              "value": "1",
+              "description": "页码，默认1"
+            },
+            {
+              "key": "page_size",
+              "value": "10",
+              "description": "每页条数，默认10，最大100"
+            }
+          ]
+        },
+        "description": "获取用户的粉丝列表，分页查询"
+      },
+      "response": []
+    },
+    {
+      "name": "获取关注统计信息",
+      "request": {
+        "method": "GET",
+        "header": [
+          {
+            "key": "Authorization",
+            "value": "{{token}}",
+            "type": "text"
+          }
+        ],
+        "url": {
+          "raw": "{{base_url}}/follow/statistics?user_id={{user_id}}",
+          "host": [
+            "{{base_url}}"
+          ],
+          "path": [
+            "follow",
+            "statistics"
+          ],
+          "query": [
+            {
+              "key": "user_id",
+              "value": "{{user_id}}",
+              "description": "要查询的用户ID，不传则查询当前登录用户"
+            }
+          ]
+        },
+        "description": "获取用户的关注数和粉丝数统计信息"
+      },
+      "response": []
+    }
+  ],
+  "variable": [
+    {
+      "key": "base_url",
+      "value": "http://localhost:8080",
+      "type": "string",
+      "description": "API基础URL"
+    },
+    {
+      "key": "token",
+      "value": "Bearer your_jwt_token_here",
+      "type": "string",
+      "description": "JWT认证令牌"
+    },
+    {
+      "key": "user_id",
+      "value": "1",
+      "type": "string",
+      "description": "用户ID"
+    },
+    {
+      "key": "followee_id",
+      "value": "2",
+      "type": "string",
+      "description": "要关注的用户ID"
+    }
+  ]
+}

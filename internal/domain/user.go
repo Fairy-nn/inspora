@@ -11,5 +11,5 @@ type User struct {
 	Phone    string `json:"phone"`
 	Name     string `json:"name"`
 	Balance  int64  `json:"balance"` // 用户余额，单位：分
-
+	// Utime   int64  `json:"utime"` // 更新时间
 }

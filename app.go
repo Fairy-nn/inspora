@@ -5,10 +5,12 @@ import (
 	"github.com/robfig/cron/v3"
 
 	events "github.com/Fairy-nn/inspora/internal/events/article"
+	"github.com/Fairy-nn/inspora/ioc"
 )
 
 type App struct {
 	Server    *gin.Engine
 	Consumers []events.Consumer
 	Cron      *cron.Cron
+	Search    ioc.SearchInitializer
 }

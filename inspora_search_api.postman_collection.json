@@ -1,0 +1,164 @@
+{
+  "info": {
+    "name": "Inspora - Search API",
+    "description": "测试 Inspora 项目的搜索系统相关接口",
+    "_postman_id": "e5a26f8c-3b6d-4f2e-8a12-abcde3b7c8d9",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "item": [
+    {
+      "name": "搜索用户",
+      "request": {
+        "method": "GET",
+        "header": [
+          {
+            "key": "Authorization",
+            "value": "{{token}}",
+            "type": "text"
+          }
+        ],
+        "url": {
+          "raw": "{{base_url}}/search/users?query={{search_query}}&page=1&page_size=10",
+          "host": [
+            "{{base_url}}"
+          ],
+          "path": [
+            "search",
+            "users"
+          ],
+          "query": [
+            {
+              "key": "query",
+              "value": "{{search_query}}",
+              "description": "搜索关键词，必填"
+            },
+            {
+              "key": "page",
+              "value": "1",
+              "description": "页码，默认1"
+            },
+            {
+              "key": "page_size",
+              "value": "10",
+              "description": "每页条数，默认10，最大100"
+            }
+          ]
+        },
+        "description": "根据关键词搜索用户"
+      },
+      "response": []
+    },
+    {
+      "name": "搜索文章",
+      "request": {
+        "method": "GET",
+        "header": [
+          {
+            "key": "Authorization",
+            "value": "{{token}}",
+            "type": "text"
+          }
+        ],
+        "url": {
+          "raw": "{{base_url}}/search/articles?query={{search_query}}&page=1&page_size=10",
+          "host": [
+            "{{base_url}}"
+          ],
+          "path": [
+            "search",
+            "articles"
+          ],
+          "query": [
+            {
+              "key": "query",
+              "value": "{{search_query}}",
+              "description": "搜索关键词，必填"
+            },
+            {
+              "key": "page",
+              "value": "1",
+              "description": "页码，默认1"
+            },
+            {
+              "key": "page_size",
+              "value": "10",
+              "description": "每页条数，默认10，最大100"
+            }
+          ]
+        },
+        "description": "根据关键词搜索文章内容"
+      },
+      "response": []
+    },
+    {
+      "name": "按作者搜索文章",
+      "request": {
+        "method": "GET",
+        "header": [
+          {
+            "key": "Authorization",
+            "value": "{{token}}",
+            "type": "text"
+          }
+        ],
+        "url": {
+          "raw": "{{base_url}}/search/articles/author/{{author_id}}?query={{search_query}}&page=1&page_size=10",
+          "host": [
+            "{{base_url}}"
+          ],
+          "path": [
+            "search",
+            "articles",
+            "author",
+            "{{author_id}}"
+          ],
+          "query": [
+            {
+              "key": "query",
+              "value": "{{search_query}}",
+              "description": "搜索关键词，必填"
+            },
+            {
+              "key": "page",
+              "value": "1",
+              "description": "页码，默认1"
+            },
+            {
+              "key": "page_size",
+              "value": "10",
+              "description": "每页条数，默认10，最大100"
+            }
+          ]
+        },
+        "description": "根据关键词搜索特定作者的文章内容"
+      },
+      "response": []
+    }
+  ],
+  "variable": [
+    {
+      "key": "base_url",
+      "value": "http://localhost:8080",
+      "type": "string",
+      "description": "API基础URL"
+    },
+    {
+      "key": "token",
+      "value": "Bearer your_jwt_token_here",
+      "type": "string",
+      "description": "JWT认证令牌"
+    },
+    {
+      "key": "search_query",
+      "value": "golang",
+      "type": "string",
+      "description": "搜索关键词"
+    },
+    {
+      "key": "author_id",
+      "value": "1",
+      "type": "string",
+      "description": "作者ID"
+    }
+  ]
+}

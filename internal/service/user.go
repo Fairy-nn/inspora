@@ -22,13 +22,14 @@ type UserServiceInterface interface {
 
 // UserService 用户服务结构体
 type UserService struct {
-	repo repository.UserRepositoryInterface // 用户存储库接口
-
+	repo      repository.UserRepositoryInterface // 用户存储库接口
+	searchSvc SearchService
 }
 
-func NewUserService(repo repository.UserRepositoryInterface) UserServiceInterface {
+func NewUserService(repo repository.UserRepositoryInterface, searchSvc SearchService) UserServiceInterface {
 	return &UserService{
-		repo: repo,
+		repo:      repo,
+		searchSvc: searchSvc,
 	}
 }
 
@@ -41,7 +42,18 @@ func (svc *UserService) SignUp(ctx *gin.Context, u domain.User) error {
 	}
 	u.Password = string(hashedPassword)
 	// 调用存储库的 Create 方法创建用户
-	return svc.repo.Create(ctx, u)
+	err = svc.repo.Create(ctx, u)
+	if err != nil {
+		return err
+	}
+	// 创建用户索引
+	if svc.searchSvc != nil {
+		createdUser, err := svc.repo.GetByEmail(ctx, u.Email)
+		if err == nil {
+			_ = svc.searchSvc.IndexUser(ctx, createdUser)
+		}
+	}
+	return nil
 }
 
 var (
@@ -106,10 +118,17 @@ func (u *UserService) FindOrCreateUser(ctx *gin.Context, phone string) (domain.U
 	})
 	// 如果创建用户时发生错误，检查是否是重复条目错误
 	if err != nil && err != repository.ErrUserDuplicateEmail {
-
 		return domain.User{}, err
 	}
-	return u.repo.GetByPhone(ctx, phone)
+	createdUser, err := u.repo.GetByPhone(ctx, phone)
+	if err != nil {
+		return domain.User{}, err
+	}
+	// 创建用户索引
+	if u.searchSvc != nil {
+		_= u.searchSvc.IndexUser(ctx, createdUser)
+	}
+	return createdUser, nil
 }
 
 // UpdateUserBalance 更新用户余额

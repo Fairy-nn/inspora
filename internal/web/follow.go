@@ -84,7 +84,7 @@ func (h *FollowHandler) CancelFollow(c *gin.Context) {
 
 }
 
-// 获取关注关系
+// 获取关注关系,返回的是当前用户是否关注了指定用户
 func (h *FollowHandler) GetFollowRelation(c *gin.Context) {
 	followeeStr := c.Query("followee")
 	followee, err := strconv.ParseInt(followeeStr, 10, 64)
@@ -124,7 +124,7 @@ func (h *FollowHandler) GetFollowRelation(c *gin.Context) {
 
 }
 
-// GetFolloweeList 获取关注列表
+// GetFolloweeList 获取某个用户的关注列表
 func (h *FollowHandler) GetFolloweeList(ctx *gin.Context) {
 	// 解析分页参数
 	offset, limit := extractPaginationParams(ctx)
@@ -169,7 +169,7 @@ func (h *FollowHandler) GetFolloweeList(ctx *gin.Context) {
 	})
 }
 
-// GetFollowerList 获取粉丝列表
+// GetFollowerList 获取某个用户的粉丝列表
 func (h *FollowHandler) GetFollowerList(ctx *gin.Context) {
 	// 解析分页参数
 	offset, limit := extractPaginationParams(ctx)
@@ -214,6 +214,8 @@ func (h *FollowHandler) GetFollowerList(ctx *gin.Context) {
 	})
 }
 
+// GetFollowStatistics 获取关注统计信息
+// 返回的是当前用户的关注和粉丝数量
 func (h *FollowHandler) GetFollowStatistics(ctx *gin.Context) {
 	// 获取用户ID，可以是当前用户也可以是查询的目标用户
 	userIdStr := ctx.Query("user_id")

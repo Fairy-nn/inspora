@@ -9,7 +9,8 @@ import (
 func InitGin(middlewares []gin.HandlerFunc, u *web.UserHandler,
 	articleHandler *web.ArticleHandler,
 	commentHandler *web.CommentHandler,
-	followHandler *web.FollowHandler) *gin.Engine {
+	followHandler *web.FollowHandler,
+	searchHandler *web.SearchHandler) *gin.Engine {
 	r := gin.Default()
 	println("gin init")
 	r.Use(middlewares...)
@@ -18,6 +19,7 @@ func InitGin(middlewares []gin.HandlerFunc, u *web.UserHandler,
 	articleHandler.RegisterRoutes(r)
 	commentHandler.RegisterRoutes(r)
 	followHandler.RegisterRoutes(r)
+	searchHandler.RegisterRoutes(r)
 	return r
 }
 

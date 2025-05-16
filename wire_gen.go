@@ -14,19 +14,30 @@ import (
 	"github.com/Fairy-nn/inspora/internal/service"
 	"github.com/Fairy-nn/inspora/internal/web"
 	"github.com/Fairy-nn/inspora/ioc"
+	"github.com/Fairy-nn/inspora/pkg/elasticsearch"
 	"github.com/google/wire"
 )
 
 // Injectors from wire.go:
 
-func InitApp() *App {
+func InitApp() (*App, error) {
 	v := ioc.InitMiddlewares()
 	db := ioc.InitDB()
 	userDaoInterface := dao.NewUserDAO(db)
 	cmdable := ioc.InitCache()
 	userCacheInterface := cache.NewUserCacheV1(cmdable)
 	userRepositoryInterface := repository.NewUserRepository(userDaoInterface, userCacheInterface)
-	userServiceInterface := service.NewUserService(userRepositoryInterface)
+	elasticSearchConfig := ioc.ProvideElasticSearchConfig()
+	client, err := elasticsearch.NewClient(elasticSearchConfig)
+	if err != nil {
+		return nil, err
+	}
+	indexService := elasticsearch.NewBaseIndexService(client, elasticSearchConfig)
+	searchService := elasticsearch.NewBaseSearchService(client, elasticSearchConfig)
+	userSearchService := elasticsearch.NewUserSearchService(indexService, searchService)
+	articleSearchService := elasticsearch.NewArticleSearchService(indexService, searchService)
+	serviceSearchService := service.NewSearchService(userSearchService, articleSearchService)
+	userServiceInterface := service.NewUserService(userRepositoryInterface, serviceSearchService)
 	codeCacheInterface := cache.NewCodeCache(cmdable)
 	codeRepositoryInterface := repository.NewCodeRepository(codeCacheInterface)
 	smsService := ioc.InitSMS()
@@ -35,10 +46,10 @@ func InitApp() *App {
 	articleDaoInterface := dao.NewArticleDAO(db)
 	articleCache := cache.NewRedisArticleCache(cmdable)
 	articleRepository := repository.NewCachedArticleRepository(articleDaoInterface, articleCache, userRepositoryInterface)
-	client := ioc.InitKafka()
-	syncProducer := ioc.NewSyncProducer(client)
+	saramaClient := ioc.InitKafka()
+	syncProducer := ioc.NewSyncProducer(saramaClient)
 	producer := article.NewKafkaProducer(syncProducer)
-	articleServiceInterface := service.NewArticleService(articleRepository, producer)
+	articleServiceInterface := service.NewArticleService(articleRepository, producer, serviceSearchService)
 	interactionDaoInterface := dao.NewGormInteractionDAO(db)
 	interactionCacheInterface := cache.NewRedisInteractionCache(cmdable)
 	interactionRepositoryInterface := repository.NewInteractionRepository(interactionDaoInterface, interactionCacheInterface)
@@ -56,17 +67,20 @@ func InitApp() *App {
 	followRepository := repository.NewFollowRepository(followRelationDAO, followCache)
 	followService := service.NewFollowService(followRepository)
 	followHandler := web.NewFollowHandler(followService)
-	engine := ioc.InitGin(v, userHandler, articleHandler, commentHandler, followHandler)
-	consumer := article.NewInteractionBatchConsumer(client, interactionRepositoryInterface)
+	searchHandler := web.NewSearchHandler(serviceSearchService)
+	engine := ioc.InitGin(v, userHandler, articleHandler, commentHandler, followHandler, searchHandler)
+	consumer := article.NewInteractionBatchConsumer(saramaClient, interactionRepositoryInterface)
 	v2 := ioc.NewSyncConsumer(consumer)
 	rankingJob := ioc.InitRankingJob(rankingServiceInterface)
 	cron := ioc.InitJobs(rankingJob)
+	defaultSearchInitializer := ioc.ProvideSearchInitializer(userSearchService, articleSearchService)
 	app := &App{
 		Server:    engine,
 		Consumers: v2,
 		Cron:      cron,
+		Search:    defaultSearchInitializer,
 	}
-	return app
+	return app, nil
 }
 
 // wire.go:
@@ -74,3 +88,5 @@ func InitApp() *App {
 var commentServiceSet = wire.NewSet(dao.NewCommentDAO, cache.NewRedisCommentCache, repository.NewCachedCommentRepository, service.NewCommentService, web.NewCommentHandler)
 
 var followServiceSet = wire.NewSet(dao.NewFollowRelationDAO, cache.NewRedisFollowCache, repository.NewFollowRepository, service.NewFollowService, web.NewFollowHandler)
+
+var searchServiceSet = wire.NewSet(ioc.ElasticsearchSet, ioc.SearchInitializerSet, service.NewSearchService, web.NewSearchHandler)

@@ -4,6 +4,8 @@ import (
 	"context"
 	"fmt"
 	"time"
+
+	"github.com/Fairy-nn/inspora/ioc"
 )
 
 func main() {
@@ -11,9 +13,13 @@ func main() {
 		panic(fmt.Errorf("fatal error config file: %w", err))
 	}
 
-	// r := InitInspora()
-	// r.Run(":8080") // 启动服务器
-	app := InitApp() // 初始化应用程序
+	app, err := InitApp()
+	if err != nil {
+		panic(fmt.Errorf("failed to initialize application: %w", err))
+	}
+
+	// Initialize Elasticsearch indices
+	ioc.InitializeElasticsearchIndices(app.Search)
 
 	// 启动消费者
 	for _, c := range app.Consumers {
