@@ -29,6 +29,14 @@ func (h *SearchHandler) RegisterRoutes(server *gin.Engine) {
 	group.GET("/articles/author/:id", h.SearchArticlesByAuthor)
 }
 
+// UserSearchVO 用户搜索结果VO
+type UserSearchVO struct {
+	ID       int64  `json:"id"`
+	Username string `json:"username"`
+	Email    string `json:"email"`
+	Phone    string `json:"phone"`
+}
+
 func (h *SearchHandler) SearchUsers(ctx *gin.Context) {
 	// 搜索关键词
 	query := ctx.Query("query")
@@ -56,7 +64,19 @@ func (h *SearchHandler) SearchUsers(ctx *gin.Context) {
 		Code: 200,
 		Data: gin.H{
 			"total": total,
-			"users": users,
+			"users": func() []UserSearchVO {
+				result := make([]UserSearchVO, 0, len(users))
+				for _, user := range users {
+					vo := UserSearchVO{
+						ID:       user.ID,
+						Username: user.Username,
+						Email:    user.Email,
+						Phone:    user.Phone,
+					}
+					result = append(result, vo)
+				}
+				return result
+			}(),
 		},
 	})
 }

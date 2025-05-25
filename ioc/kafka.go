@@ -1,12 +1,28 @@
 package ioc
 
 import (
+	"context"
 	"fmt"
 
+	articleEvents "github.com/Fairy-nn/inspora/internal/events/article"
 	events "github.com/Fairy-nn/inspora/internal/events/article"
+	feedEvents "github.com/Fairy-nn/inspora/internal/events/feed"
 	"github.com/IBM/sarama"
 	"github.com/spf13/viper"
 )
+
+// Consumer 接口定义
+type Consumer interface {
+	Start(ctx context.Context) error
+}
+
+// NewConsumers 返回所有的消费者列表
+func NewConsumers(articleConsumer articleEvents.Consumer, feedConsumer feedEvents.Consumer) []Consumer {
+	return []Consumer{
+		articleConsumer,
+		feedConsumer,
+	}
+}
 
 // 初始化Kafka客户端
 func InitKafka() sarama.Client {

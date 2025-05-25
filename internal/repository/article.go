@@ -2,6 +2,7 @@ package repository
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"time"
 
@@ -46,6 +47,11 @@ func (c *CachedArticleRepository) SyncStatus(ctx context.Context, articleID, aut
 
 // Create 创建文章
 func (c *CachedArticleRepository) Create(ctx context.Context, article domain.Article) (int64, error) {
+	// 讲图片地址转换为字符串
+	imageURLsJSON, err := json.Marshal(article.ImgUrls)
+	if err != nil {
+		return 0, fmt.Errorf("转换图片地址失败: %w", err)
+	}
 	// 删除缓存
 	defer func() {
 		err := c.cache.DelFirstPage(ctx, article.Author.ID)
@@ -59,11 +65,17 @@ func (c *CachedArticleRepository) Create(ctx context.Context, article domain.Art
 		Content:  article.Content,
 		AuthorID: article.Author.ID,
 		Status:   article.Status.ToUint8(),
+		ImgUrls:  string(imageURLsJSON),
 	})
 }
 
 // Update 更新文章
 func (c *CachedArticleRepository) Update(ctx context.Context, article domain.Article) error {
+	// 讲图片地址转换为字符串
+	imageURLsJSON, err := json.Marshal(article.ImgUrls)
+	if err != nil {
+		return fmt.Errorf("转换图片地址失败: %w", err)
+	}
 	defer func() {
 		err := c.cache.DelFirstPage(ctx, article.Author.ID)
 		if err != nil {
@@ -82,18 +94,13 @@ func (c *CachedArticleRepository) Update(ctx context.Context, article domain.Art
 		Content:  article.Content,
 		AuthorID: article.Author.ID,
 		Status:   article.Status.ToUint8(),
+		ImgUrls:  string(imageURLsJSON), // 图片地址
 	})
 }
 
 // Sync 同步文章
 func (c *CachedArticleRepository) Sync(ctx context.Context, article domain.Article) (int64, error) {
-	id, err := c.dao.Sync(ctx, &dao.Article{
-		ID:       article.ID,
-		Title:    article.Title,
-		Content:  article.Content,
-		AuthorID: article.Author.ID,
-		Status:   article.Status.ToUint8(),
-	})
+	id, err := c.dao.Sync(ctx, c.toEntity(article))
 
 	// 文章发布成功后，删除缓存
 	if err == nil {
@@ -156,7 +163,7 @@ func (c *CachedArticleRepository) List(ctx context.Context, userID int64, limit 
 func (c *CachedArticleRepository) toDomainList(articles []dao.Article) []domain.Article {
 	var result []domain.Article
 	for _, a := range articles {
-		result = append(result, domain.Article{
+		article := domain.Article{
 			ID:      a.ID,
 			Title:   a.Title,
 			Content: a.Content,
@@ -164,10 +171,19 @@ func (c *CachedArticleRepository) toDomainList(articles []dao.Article) []domain.
 			Status:  domain.ArticleStatus(a.Status),
 			Ctime:   time.UnixMilli(a.Ctime),
 			Utime:   time.UnixMilli(a.Utime),
-		})
+		}
+		if a.ImgUrls != "" {
+			// 解析图片地址
+			var imgUrls []string
+			err := json.Unmarshal([]byte(a.ImgUrls), &imgUrls)
+			if err != nil {
+				fmt.Println("解析图片地址失败", err)
+			}
+			article.ImgUrls = imgUrls
+		}
+		result = append(result, article)
 	}
 	return result
-
 }
 
 // preCache 预缓存,而且缓存时间很短
@@ -187,15 +203,7 @@ func (c *CachedArticleRepository) FindById(ctx context.Context, id, uid int64) (
 	if err != nil {
 		return domain.Article{}, err
 	}
-	return domain.Article{
-		ID:      article.ID,
-		Title:   article.Title,
-		Content: article.Content,
-		Author:  domain.Author{ID: article.AuthorID},
-		Status:  domain.ArticleStatus(article.Status),
-		Ctime:   time.UnixMilli(article.Ctime),
-		Utime:   time.UnixMilli(article.Utime),
-	}, nil
+	return c.toDomain(article), nil
 }
 
 // FindPublicArticleById 根据ID获取公开文章
@@ -217,7 +225,6 @@ func (c *CachedArticleRepository) FindPublicArticleById(ctx context.Context, id 
 	if err != nil {
 		return domain.Article{}, err
 	}
-
 	// 组合成domain.Article对象
 	res := domain.Article{
 		ID:      article.ID,
@@ -247,4 +254,39 @@ func (c *CachedArticleRepository) ListPublic(ctx context.Context, startTime time
 		return nil, err
 	}
 	return c.toDomainList(res), nil
+}
+
+func (c *CachedArticleRepository) toDomain(a dao.Article) domain.Article {
+	article := domain.Article{
+		ID:      a.ID,
+		Title:   a.Title,
+		Content: a.Content,
+		Author:  domain.Author{ID: a.AuthorID},
+		Status:  domain.ArticleStatus(a.Status),
+		Ctime:   time.UnixMilli(a.Ctime),
+		Utime:   time.UnixMilli(a.Utime),
+	}
+
+	// 解析图片地址
+	if a.ImgUrls != "" {
+		var imageURLs []string
+		if err := json.Unmarshal([]byte(a.ImgUrls), &imageURLs); err == nil {
+			article.ImgUrls = imageURLs
+		}
+	}
+
+	return article
+}
+
+func (c *CachedArticleRepository) toEntity(a domain.Article) *dao.Article {
+	// 将图片地址转换为字符串
+	imageURLsJSON, _ := json.Marshal(a.ImgUrls)
+	return &dao.Article{
+		ID:       a.ID,
+		Title:    a.Title,
+		Content:  a.Content,
+		AuthorID: a.Author.ID,
+		Status:   a.Status.ToUint8(),
+		ImgUrls:  string(imageURLsJSON),
+	}
 }

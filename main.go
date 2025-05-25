@@ -23,11 +23,14 @@ func main() {
 
 	// 启动消费者
 	for _, c := range app.Consumers {
-		err := c.Start(context.Background())
-		if err != nil {
-			panic(fmt.Errorf("failed to start consumer: %w", err))
-		}
-		fmt.Println("Consumer ", c, "started")
+		consumer := c // 创建一个副本以避免闭包问题
+		go func() {
+			err := consumer.Start(context.Background())
+			if err != nil {
+				panic(fmt.Errorf("failed to start consumer: %w", err))
+			}
+		}()
+		fmt.Println("Consumer", consumer, "started in background")
 	}
 
 	// 启动定时任务

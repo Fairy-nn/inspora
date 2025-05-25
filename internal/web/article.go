@@ -55,6 +55,7 @@ type Request struct {
 	ID      int64  `json:"id"` //文章ID
 	Title   string `json:"title"`
 	Content string `json:"content"`
+	ImgUrls []string `json:"img_urls"` // 图片地址
 }
 
 // 文章列表请求体
@@ -74,6 +75,7 @@ type ArticleV0 struct {
 	Ctime      int64  `json:"ctime"`       // 创建时间
 	Utime      int64  `json:"utime"`       // 更新时间
 	ViewCount  int64  `json:"view_count"`  // 浏览量
+	ImgUrls    []string `json:"img_urls"`    // 图片地址
 }
 
 // Edit 编辑文章
@@ -100,6 +102,7 @@ func (a *ArticleHandler) Edit(c *gin.Context) {
 	articleID, err := a.svc.Save(c, domain.Article{
 		Title:   req.Title,
 		Content: req.Content,
+		ImgUrls: req.ImgUrls,
 		Author: domain.Author{
 			ID: int64(userIDfloat), //作者ID
 		},
@@ -146,6 +149,7 @@ func (a *ArticleHandler) Publish(c *gin.Context) {
 		ID:      req.ID,
 		Title:   req.Title,
 		Content: req.Content,
+		ImgUrls: req.ImgUrls,
 		Author: domain.Author{
 			ID: userIDInt64, //作者ID
 		},
@@ -259,6 +263,7 @@ func toArticleVO(article domain.Article) ArticleV0 {
 		Abstract:   article.GenerateAbstract(),
 		Ctime:      article.Ctime.UnixMilli(),
 		Utime:      article.Utime.UnixMilli(),
+		ImgUrls:   article.ImgUrls,
 	}
 }
 
@@ -358,13 +363,6 @@ func (a *ArticleHandler) PubDetail(c *gin.Context) {
 		}
 		return
 	}
-
-	// go func() {
-	// 	err := a.interactionSvc.IncrViewCount(c, a.biz, art.ID)
-	// 	if err != nil {
-	// 		fmt.Printf("增加文章浏览量失败:%v, id:%d\n", err, art.ID)
-	// 	}
-	// }()
 
 	c.JSON(200, gin.H{
 		"message":    "success",

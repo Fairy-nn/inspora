@@ -8,6 +8,7 @@ package main
 
 import (
 	"github.com/Fairy-nn/inspora/internal/events/article"
+	"github.com/Fairy-nn/inspora/internal/events/feed"
 	"github.com/Fairy-nn/inspora/internal/repository"
 	"github.com/Fairy-nn/inspora/internal/repository/cache"
 	"github.com/Fairy-nn/inspora/internal/repository/dao"
@@ -49,28 +50,40 @@ func InitApp() (*App, error) {
 	saramaClient := ioc.InitKafka()
 	syncProducer := ioc.NewSyncProducer(saramaClient)
 	producer := article.NewKafkaProducer(syncProducer)
-	articleServiceInterface := service.NewArticleService(articleRepository, producer, serviceSearchService)
+	feedDAOInterface := dao.NewGORMFeedDAO(db)
+	feedCache := cache.NewRedisFeedCache(cmdable)
+	feedRepository := repository.NewFeedRepository(feedDAOInterface, feedCache)
+	feedProducer := feed.NewKafkaProducer(syncProducer, feedRepository)
+	articleServiceInterface := service.NewArticleService(articleRepository, producer, serviceSearchService, feedProducer)
 	interactionDaoInterface := dao.NewGormInteractionDAO(db)
 	interactionCacheInterface := cache.NewRedisInteractionCache(cmdable)
 	interactionRepositoryInterface := repository.NewInteractionRepository(interactionDaoInterface, interactionCacheInterface)
-	interactionServiceInterface := service.NewInteractionService(interactionRepositoryInterface)
+	interactionServiceInterface := ProvideDependentInteractionService(interactionRepositoryInterface, feedProducer, articleServiceInterface)
 	rankingRepositoryInterface := ioc.InitRankingRepository(cmdable)
 	rankingServiceInterface := service.NewBatchRankService(articleServiceInterface, interactionServiceInterface, rankingRepositoryInterface)
 	articleHandler := web.NewArticleHandler(articleServiceInterface, interactionServiceInterface, rankingServiceInterface)
 	commentDAO := dao.NewCommentDAO(db)
 	commentCache := cache.NewRedisCommentCache(cmdable)
 	commentRepository := repository.NewCachedCommentRepository(commentDAO, commentCache)
-	commentService := service.NewCommentService(commentRepository)
+	commentService := service.NewCommentService(commentRepository, feedProducer, articleServiceInterface)
 	commentHandler := web.NewCommentHandler(commentService)
 	followRelationDAO := dao.NewFollowRelationDAO(db)
 	followCache := cache.NewRedisFollowCache(cmdable)
 	followRepository := repository.NewFollowRepository(followRelationDAO, followCache)
-	followService := service.NewFollowService(followRepository)
+	followService := service.NewFollowService(followRepository, feedProducer)
 	followHandler := web.NewFollowHandler(followService)
 	searchHandler := web.NewSearchHandler(serviceSearchService)
-	engine := ioc.InitGin(v, userHandler, articleHandler, commentHandler, followHandler, searchHandler)
+	feedServiceInterface := service.NewFeedService(feedRepository, followRepository, articleServiceInterface, userRepositoryInterface, feedProducer)
+	feedHandler := web.NewFeedHandler(feedServiceInterface)
+	ossServiceInterface, err := service.NewOSSService()
+	if err != nil {
+		return nil, err
+	}
+	uploadHandler := web.NewUploadHandler(ossServiceInterface)
+	engine := ioc.InitGin(v, userHandler, articleHandler, commentHandler, followHandler, searchHandler, feedHandler, uploadHandler)
 	consumer := article.NewInteractionBatchConsumer(saramaClient, interactionRepositoryInterface)
-	v2 := ioc.NewSyncConsumer(consumer)
+	feedConsumer := feed.NewKafkaFeedConsumer(saramaClient, feedRepository, followRepository, articleRepository, userRepositoryInterface)
+	v2 := ioc.NewConsumers(consumer, feedConsumer)
 	rankingJob := ioc.InitRankingJob(rankingServiceInterface)
 	cron := ioc.InitJobs(rankingJob)
 	defaultSearchInitializer := ioc.ProvideSearchInitializer(userSearchService, articleSearchService)
@@ -90,3 +103,21 @@ var commentServiceSet = wire.NewSet(dao.NewCommentDAO, cache.NewRedisCommentCach
 var followServiceSet = wire.NewSet(dao.NewFollowRelationDAO, cache.NewRedisFollowCache, repository.NewFollowRepository, service.NewFollowService, web.NewFollowHandler)
 
 var searchServiceSet = wire.NewSet(ioc.ElasticsearchSet, ioc.SearchInitializerSet, service.NewSearchService, web.NewSearchHandler)
+
+var feedServiceSet = wire.NewSet(dao.NewGORMFeedDAO, cache.NewRedisFeedCache, repository.NewFeedRepository, feed.NewKafkaProducer, service.NewFeedService, web.NewFeedHandler)
+
+var interactionServiceSet = wire.NewSet(dao.NewGormInteractionDAO, cache.NewRedisInteractionCache, repository.NewInteractionRepository, ProvideDependentInteractionService)
+
+var ossServiceSet = wire.NewSet(service.NewOSSService, web.NewUploadHandler)
+
+func ProvideDependentCommentService(repo repository.CommentRepository, feedProd feed.Producer, articleSvc service.ArticleServiceInterface) service.CommentService {
+	return service.NewCommentService(repo, feedProd, articleSvc)
+}
+
+func ProvideDependentFollowService(repo repository.FollowRepository, feedProd feed.Producer) service.FollowService {
+	return service.NewFollowService(repo, feedProd)
+}
+
+func ProvideDependentInteractionService(repo repository.InteractionRepositoryInterface, feedProd feed.Producer, articleSvc service.ArticleServiceInterface) service.InteractionServiceInterface {
+	return service.NewInteractionService(repo, feedProd, articleSvc)
+}

@@ -3,10 +3,12 @@ package service
 import (
 	"context"
 	"fmt"
+	"log"
 	"time"
 
 	"github.com/Fairy-nn/inspora/internal/domain"
 	events "github.com/Fairy-nn/inspora/internal/events/article"
+	feedevents "github.com/Fairy-nn/inspora/internal/events/feed"
 	"github.com/Fairy-nn/inspora/internal/repository"
 )
 
@@ -26,16 +28,18 @@ type ArticleService struct {
 	repo      repository.ArticleRepository
 	producer  events.Producer
 	searchSvc SearchService
+	feedProd  feedevents.Producer // Feed 事件生产者
 }
 
 // NewArticleService 创建文章服务
 func NewArticleService(repo repository.ArticleRepository,
-	producer events.Producer,
-	searchSvc SearchService) ArticleServiceInterface {
+	producer events.Producer, searchSvc SearchService,
+	feedProd feedevents.Producer) ArticleServiceInterface {
 	return &ArticleService{
 		repo:      repo,
 		producer:  producer,
 		searchSvc: searchSvc,
+		feedProd:  feedProd,
 	}
 }
 
@@ -94,9 +98,21 @@ func (a *ArticleService) Publish(ctx context.Context, article domain.Article) (i
 	}
 
 	// 更新搜索索引
-	return id, a.updateArticleIndex(ctx, id, article.Author.ID)
+	err = a.updateArticleIndex(ctx, id, article.Author.ID)
+	if err != nil {
+		log.Println("Failed to update article index:", err)
+	}
+	// 发送文章发布feed事件
+	if a.feedProd != nil {
+		go func() {
+			feedErr := a.feedProd.ProduceArticlePublishedEvent(ctx, article.Author.ID, id, article.Title)
+			if feedErr != nil {
+				fmt.Println("Failed to send article published feed event:", feedErr)
+			}
+		}()
+	}
 
-	// return a.repo.Sync(ctx, article)
+	return id, nil
 }
 
 // Withdraw 撤回文章

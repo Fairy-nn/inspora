@@ -1,0 +1,222 @@
+{
+  "info": {
+    "name": "Inspora - File Upload API",
+    "description": "测试 Inspora 项目的文件上传相关接口",
+    "_postman_id": "f9a25e8c-1b6d-4f2e-8a12-abcdef123456",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "item": [
+    {
+      "name": "上传单张文章图片",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Authorization",
+            "value": "{{token}}",
+            "type": "text"
+          }
+        ],
+        "body": {
+          "mode": "formdata",
+          "formdata": [
+            {
+              "key": "image",
+              "type": "file",
+              "src": []
+            }
+          ]
+        },
+        "url": {
+          "raw": "{{base_url}}/upload/article/image",
+          "host": [
+            "{{base_url}}"
+          ],
+          "path": [
+            "upload",
+            "article",
+            "image"
+          ]
+        },
+        "description": "上传单张文章图片（最大10MB）"
+      },
+      "response": [
+        {
+          "name": "成功响应",
+          "originalRequest": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "{{token}}",
+                "type": "text"
+              }
+            ],
+            "body": {
+              "mode": "formdata",
+              "formdata": [
+                {
+                  "key": "image",
+                  "type": "file",
+                  "src": []
+                }
+              ]
+            },
+            "url": {
+              "raw": "{{base_url}}/upload/article/image",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "upload",
+                "article",
+                "image"
+              ]
+            }
+          },
+          "status": "OK",
+          "code": 200,
+          "header": [
+            {
+              "key": "Content-Type",
+              "value": "application/json"
+            }
+          ],
+          "body": "{\n    \"url\": \"https://example-bucket.s3.region.amazonaws.com/articles/images/12345678.jpg\"\n}",
+          "_postman_previewlanguage": "json"
+        }
+      ]
+    },
+    {
+      "name": "上传多张文章图片",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Authorization",
+            "value": "{{token}}",
+            "type": "text"
+          }
+        ],
+        "body": {
+          "mode": "formdata",
+          "formdata": [
+            {
+              "key": "images",
+              "type": "file",
+              "src": [],
+              "description": "可选择多个文件，最多9个"
+            },
+            {
+              "key": "images",
+              "type": "file",
+              "src": []
+            },
+            {
+              "key": "images",
+              "type": "file",
+              "src": []
+            }
+          ]
+        },
+        "url": {
+          "raw": "{{base_url}}/upload/article/images",
+          "host": [
+            "{{base_url}}"
+          ],
+          "path": [
+            "upload",
+            "article",
+            "images"
+          ]
+        },
+        "description": "上传多张文章图片（每张最大10MB，最多9张）"
+      },
+      "response": [
+        {
+          "name": "成功响应",
+          "originalRequest": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "{{token}}",
+                "type": "text"
+              }
+            ],
+            "body": {
+              "mode": "formdata",
+              "formdata": [
+                {
+                  "key": "images",
+                  "type": "file",
+                  "src": []
+                },
+                {
+                  "key": "images",
+                  "type": "file",
+                  "src": []
+                }
+              ]
+            },
+            "url": {
+              "raw": "{{base_url}}/upload/article/images",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "upload",
+                "article",
+                "images"
+              ]
+            }
+          },
+          "status": "OK",
+          "code": 200,
+          "header": [
+            {
+              "key": "Content-Type",
+              "value": "application/json"
+            }
+          ],
+          "body": "{\n    \"urls\": [\n        \"https://example-bucket.s3.region.amazonaws.com/articles/images/12345678.jpg\",\n        \"https://example-bucket.s3.region.amazonaws.com/articles/images/23456789.jpg\"\n    ]\n}",
+          "_postman_previewlanguage": "json"
+        }
+      ]
+    }
+  ],
+  "event": [
+    {
+      "listen": "prerequest",
+      "script": {
+        "type": "text/javascript",
+        "exec": [
+          ""
+        ]
+      }
+    },
+    {
+      "listen": "test",
+      "script": {
+        "type": "text/javascript",
+        "exec": [
+          ""
+        ]
+      }
+    }
+  ],
+  "variable": [
+    {
+      "key": "base_url",
+      "value": "http://localhost:8080",
+      "type": "string",
+      "description": "API基础URL"
+    },
+    {
+      "key": "token",
+      "value": "Bearer your_jwt_token_here",
+      "type": "string",
+      "description": "JWT认证令牌"
+    }
+  ]
+}

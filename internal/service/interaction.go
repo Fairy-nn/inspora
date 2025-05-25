@@ -3,8 +3,11 @@ package service
 import (
 	"context"
 	"errors"
+	"fmt"
+	"time"
 
 	"github.com/Fairy-nn/inspora/internal/domain"
+	"github.com/Fairy-nn/inspora/internal/events/feed"
 	"github.com/Fairy-nn/inspora/internal/repository"
 	"golang.org/x/sync/errgroup"
 	"gorm.io/gorm"
@@ -22,13 +25,17 @@ type InteractionServiceInterface interface {
 }
 
 type InteractionService struct {
-	repo repository.InteractionRepositoryInterface
+	repo       repository.InteractionRepositoryInterface
+	feedProd   feed.Producer
+	articleSvc ArticleServiceInterface
 }
 
 // 创建一个新的交互服务实例
-func NewInteractionService(repo repository.InteractionRepositoryInterface) InteractionServiceInterface {
+func NewInteractionService(repo repository.InteractionRepositoryInterface, feedProd feed.Producer, articleSvc ArticleServiceInterface) InteractionServiceInterface {
 	return &InteractionService{
-		repo: repo,
+		repo:       repo,
+		feedProd:   feedProd,
+		articleSvc: articleSvc,
 	}
 }
 
@@ -39,8 +46,35 @@ func (i *InteractionService) IncrViewCount(ctx context.Context, biz string, id i
 
 // Like 增加点赞量
 func (i *InteractionService) Like(ctx context.Context, biz string, bizId int64, uid int64) error {
+	err := i.repo.IncrLikeCount(ctx, biz, bizId, uid)
+	if err != nil {
+		return err
+	}
+	// 发送用户点赞事件
+	if biz == "article" && i.feedProd != nil {
+		// 获取文章作者ID
+		var authorID int64
 
-	return i.repo.IncrLikeCount(ctx, biz, bizId, uid)
+		// 从文章服务获取文章信息
+		article, err := i.articleSvc.FindPublicArticleById(ctx, bizId, uid)
+		if err != nil {
+			// 仅记录错误日志，不影响主流程
+			fmt.Printf("获取文章信息失败: %v\n", err)
+		} else {
+			authorID = article.Author.ID
+		}
+
+		// 异步发送Feed事件，避免阻塞主流程
+		go func(aid int64) {
+			ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
+			defer cancel()
+			if err := i.feedProd.ProduceArticleLikedEvent(ctx, uid, bizId, aid); err != nil {
+				// 记录错误日志，但不影响主流程
+				fmt.Printf("发送点赞Feed事件失败: %v\n", err)
+			}
+		}(authorID)
+	}
+	return nil
 }
 
 // CancelLike 减少点赞量
@@ -51,7 +85,37 @@ func (i *InteractionService) CancelLike(ctx context.Context, biz string, bizId i
 
 // Collect 增加收藏量
 func (i *InteractionService) Collect(ctx context.Context, biz string, bizId int64, cid, uid int64) error {
-	return i.repo.AddCollectionItem(ctx, biz, bizId, cid, uid)
+	err := i.repo.AddCollectionItem(ctx, biz, bizId, cid, uid)
+	if err != nil {
+		fmt.Printf("添加收藏失败: %v\n", err)
+	}
+	// 发送用户收藏事件
+	// 发送Feed事件（仅对文章收藏发送）
+	if biz == "article" && i.feedProd != nil {
+		// 获取文章作者ID
+		var authorID int64
+
+		// 从文章服务获取文章信息
+		article, err := i.articleSvc.FindPublicArticleById(ctx, bizId, uid)
+		if err != nil {
+			// 仅记录错误日志，不影响主流程
+			fmt.Printf("获取文章信息失败: %v\n", err)
+		} else {
+			authorID = article.Author.ID
+		}
+
+		// 异步发送Feed事件，避免阻塞主流程
+		go func(aid int64) {
+			ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
+			defer cancel()
+			if err := i.feedProd.ProduceArticleCollectedEvent(ctx, uid, bizId, aid); err != nil {
+				// 记录错误日志，但不影响主流程
+				fmt.Printf("发送收藏Feed事件失败: %v\n", err)
+			}
+		}(authorID)
+	}
+
+	return nil
 }
 
 // CancelCollect 减少收藏量

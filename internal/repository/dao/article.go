@@ -29,7 +29,8 @@ type Article struct {
 	AuthorID int64  `gorm:"index:aid_ctime" json:"author_id"`   // 作者ID
 	Ctime    int64  `gorm:"index:aid_ctime" json:"ctime"`       // 创建时间
 	Utime    int64  `json:"utime"`
-	Status   uint8  `json:"status"` // 文章状态
+	Status   uint8  `json:"status"`                    // 文章状态
+	ImgUrls  string `gorm:"type:text" json:"img_urls"` // 图片地址
 }
 
 type ArticleGORMDAO struct {
@@ -69,6 +70,7 @@ func (a *ArticleGORMDAO) Update(ctx context.Context, article *Article) error {
 			"Content": article.Content,
 			"Utime":   article.Utime,
 			"Status":  uint8(article.Status), // 文章状态
+			"ImgUrls": article.ImgUrls, // 图片地址
 		})
 	if res.Error != nil {
 		return res.Error
@@ -128,6 +130,7 @@ func (a *ArticleGORMDAO) Upsert(ctx context.Context, article PublishArticle) err
 			"content": article.Content,
 			"utime":   article.Utime,
 			"status":  article.Status,
+			"img_urls": article.ImgUrls, // 图片地址
 		}),
 	}).Create(&article)
 	// MYSQL最终的语句是 INSERT INTO article (title, content, ctime, updated_at) VALUES (?, ?, ?, ?) ON DUPLICATE KEY UPDATE title = ?, content = ?, updated_at = ?

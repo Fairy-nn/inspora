@@ -3,8 +3,11 @@ package service
 import (
 	"context"
 	"errors"
+	"fmt"
+	"time"
 
 	"github.com/Fairy-nn/inspora/internal/domain"
+	"github.com/Fairy-nn/inspora/internal/events/feed"
 	"github.com/Fairy-nn/inspora/internal/repository"
 )
 
@@ -31,12 +34,16 @@ type CommentService interface {
 }
 
 type commentService struct {
-	repo repository.CommentRepository
+	repo       repository.CommentRepository
+	feedProd   feed.Producer
+	articleSvc ArticleServiceInterface
 }
 
-func NewCommentService(repo repository.CommentRepository) CommentService {
+func NewCommentService(repo repository.CommentRepository, feedProd feed.Producer, articleSvc ArticleServiceInterface) CommentService {
 	return &commentService{
-		repo: repo,
+		repo:       repo,
+		feedProd:   feedProd,
+		articleSvc: articleSvc,
 	}
 }
 
@@ -61,7 +68,43 @@ func (s *commentService) CreateComment(ctx context.Context, comment domain.Comme
 			comment.RootID = parent.ID
 		}
 	}
-	return s.repo.CreateComment(ctx, comment)
+
+	commentID, err := s.repo.CreateComment(ctx, comment)
+	if err != nil {
+		return 0, err
+	}
+
+	// 发送评论feed事件
+	if comment.Biz == "article" && s.feedProd != nil {
+		// 获取文章作者ID
+		var authorID int64
+		// 从文章服务获取文章信息
+		article, err := s.articleSvc.FindPublicArticleById(ctx, comment.BizID, comment.UserID)
+		if err != nil {
+			// 仅记录错误日志，不影响主流程
+			fmt.Printf("获取文章信息失败: %v\n", err)
+		} else {
+			authorID = article.Author.ID
+		}
+
+		// 异步发送Feed事件，避免阻塞主流程
+		go func(aid int64) {
+			ctxTimeout, cancel := context.WithTimeout(context.Background(), 3*time.Second)
+			defer cancel()
+
+			// 截取评论内容（如果太长）
+			commentContent := comment.Content
+			if len(commentContent) > 50 {
+				commentContent = commentContent[:50] + "..."
+			}
+
+			if err := s.feedProd.ProduceArticleCommentedEvent(ctxTimeout, comment.UserID, comment.BizID, aid, commentID, commentContent); err != nil {
+				// 记录错误日志，但不影响主流程
+				fmt.Printf("发送评论Feed事件失败: %v\n", err)
+			}
+		}(authorID)
+	}
+	return commentID, nil
 }
 
 // GetComment 根据ID获取评论
